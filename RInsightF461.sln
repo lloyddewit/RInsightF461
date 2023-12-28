@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34322.80
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RInsightF461", "RInsightF461\RInsightF461.csproj", "{CD28AB06-4226-45D7-B9D3-5891E60A8E0D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CD28AB06-4226-45D7-B9D3-5891E60A8E0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD28AB06-4226-45D7-B9D3-5891E60A8E0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD28AB06-4226-45D7-B9D3-5891E60A8E0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD28AB06-4226-45D7-B9D3-5891E60A8E0D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3F7CA999-928C-4063-A810-344F4D0ED0EE}
+	EndGlobalSection
+EndGlobal

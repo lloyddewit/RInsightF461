@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>0.0.2</version>
+    <title>$title$</title>
+    <authors>Stephen Lloyd</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">GPL-3.0-or-later</license>
+    <!-- <icon>icon.png</icon> -->
+    <projectUrl>https://github.com/lloyddewit/RInsight/</projectUrl>
+    <description>A .Net framemwork version of the RInsight NuGet package.</description>
+    <releaseNotes>Initial test version.</releaseNotes>
+    <copyright>$copyright$</copyright>
+    <tags>R Statistics Statistical</tags>
+  </metadata>
+</package>
