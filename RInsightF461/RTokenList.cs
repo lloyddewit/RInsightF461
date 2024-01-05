@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 
-namespace RInsightF461
+namespace RInsight
 {
-
     /// --------------------------------------------------------------------------------------------
     /// <summary>
     /// A list of tokens generated from an R script. Each item in the list is a recursive token tree 
@@ -16,8 +17,7 @@ namespace RInsightF461
     /// the RToken class.
     /// </summary>
     /// --------------------------------------------------------------------------------------------
-    public class RTokenList
-    {
+    public class RTokenList {
 
         /// <summary> List of tokens that represents the R script. 
         /// Each token is a tree representing a single R statement. </summary>
@@ -36,25 +36,25 @@ namespace RInsightF461
         ///             have the same precedence.</summary>
         private static readonly string[][] _operatorPrecedences = new string[][]
             {
-            new string[] { "::", ":::" },
-            new string[] { "$", "@" },
-            new string[] { "[", "[[" }, // bracket operators
-            new string[] { "^" },       // right to left precedence
-            new string[] { "-", "+" },  // unary operarors
-            new string[] { ":" },
-            new string[] { "%" },       // any operator that starts with '%' (including user-defined operators)
-            new string[] { "|>" },
-            new string[] { "*", "/" },
-            new string[] { "+", "-" },
-            new string[] { "<", ">", "<>", "<=", ">=", "==", "!=" },
-            new string[] { "!" },
-            new string[] { "&", "&&" },
-            new string[] { "|", "||" },
-            new string[] { "~" },       // unary or binary
-            new string[] { "->", "->>" },
-            new string[] { "<-", "<<-" },
-            new string[] { "=" },
-            new string[] { "?", "??" }
+                new string[] { "::", ":::" },
+                new string[] { "$", "@" },
+                new string[] { "[", "[[" }, // bracket operators
+                new string[] { "^" },       // right to left precedence
+                new string[] { "-", "+" },  // unary operarors
+                new string[] { ":" },
+                new string[] { "%" },       // any operator that starts with '%' (including user-defined operators)
+                new string[] { "|>" },
+                new string[] { "*", "/" },
+                new string[] { "+", "-" },
+                new string[] { "<", ">", "<>", "<=", ">=", "==", "!=" },
+                new string[] { "!" },
+                new string[] { "&", "&&" },
+                new string[] { "|", "||" },
+                new string[] { "~" },       // unary or binary
+                new string[] { "->", "->>" },
+                new string[] { "<-", "<<-" },
+                new string[] { "=" },
+                new string[] { "?", "??" }
             };
 
         /// --------------------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ namespace RInsightF461
         /// R language specification at https://cran.r-project.org/doc/manuals/r-release/R-lang.html 
         /// (referenced 01 Feb 2021).</param>
         /// --------------------------------------------------------------------------------------------
-        public RTokenList(string script)
+        public RTokenList(string script) 
         {
             TokensFlat = GetTokenList(script);
             Tokens = GetTokenTreeList(TokensFlat);
@@ -269,7 +269,7 @@ namespace RInsightF461
                 if (token.TokenType == RToken.TokenTypes.RSeparator)
                 {
                     // -1 because we don't want to process the last token which is the close bracket
-                    while (posTokens < tokens.Count - 1)
+                    while (posTokens < tokens.Count-1)
                     {
                         RToken tokenTmp = tokens[posTokens];
                         // make each token up to next separator or close bracket, a child of the comma
@@ -286,6 +286,49 @@ namespace RInsightF461
                 tokensNew.Add(token.CloneMe());
             }
 
+            return tokensNew;
+        }
+
+        /// --------------------------------------------------------------------------------------------
+        /// <summary>
+        /// Traverses the <paramref name="tokens"/> tree. If the token is an end statement then it 
+        /// appends the end statement token to the child list of the previous token. 
+        /// Returns a list of tokens where each top-level token represents a single statement including 
+        /// the statement's end statement token.</summary>
+        /// 
+        /// <param name="tokens">  The token tree to restructure. </param>
+        /// <returns>              A token tree restructured for end statement tokens. </returns>
+        /// --------------------------------------------------------------------------------------------
+        private static List<RToken> GetTokenTreeEndStatements(List<RToken> tokens)
+        {
+            var tokensNew = new List<RToken>();
+            if (tokens.Count < 1)
+            {
+                return tokensNew;
+            }
+
+            RToken tokenPrev = tokens[0].CloneMe();
+            tokenPrev.ChildTokens = GetTokenTreeEndStatements(tokenPrev.CloneMe().ChildTokens);
+
+            int pos = 1;
+            while (pos < tokens.Count)
+            {
+                RToken token = tokens[pos];
+                if (token.TokenType == RToken.TokenTypes.REndStatement)
+                {
+                    // make the end statement token a child of the previous token
+                    tokenPrev.ChildTokens.Add(token.CloneMe());
+                }
+                else
+                {
+                    // add the previous token to the tree
+                    tokensNew.Add(tokenPrev.CloneMe());
+                    tokenPrev = token.CloneMe();
+                    tokenPrev.ChildTokens = GetTokenTreeEndStatements(tokenPrev.CloneMe().ChildTokens);
+                }
+                pos++;
+            }
+            tokensNew.Add(tokenPrev.CloneMe());
             return tokensNew;
         }
 
@@ -313,12 +356,12 @@ namespace RInsightF461
                             "The function's parameters have an unexpected format and cannot be processed.");
                     }
                     // make the function's open bracket a child of the function name
-                    pos++;
+                    pos ++;
                     token.ChildTokens.Add(tokens[pos].CloneMe());
                 }
                 token.ChildTokens = GetTokenTreeFunctions(token.CloneMe().ChildTokens);
                 tokensNew.Add(token.CloneMe());
-                pos++;
+                pos ++;
             }
             return tokensNew;
         }
@@ -327,7 +370,7 @@ namespace RInsightF461
         /// <summary>
         /// Constructs a list of token trees generated from <paramref name="tokenList"/>. 
         /// Each item in the list is a recursive token tree that represents a single R statement. 
-        /// Each R statement may contain zero or more substatements.
+        /// Each R statement may contain zero or more child statements.
         /// </summary>
         /// <param name="tokenList">  A one-dimensional list of tokens representing an R script.</param>
         /// <returns>                 A list of token trees generated from <paramref name="tokenList"/>.
@@ -335,47 +378,13 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         private static List<RToken> GetTokenTreeList(List<RToken> tokenList)
         {
-            var tokenTreeList = new List<RToken>();
-            int pos = 0;
-            while (pos < tokenList.Count)
-            {
-                // create list of tokens for this statement
-                var statementTokens = new List<RToken>();
-                while (pos < tokenList.Count)
-                {
-                    statementTokens.Add(tokenList[pos]);
-                    pos++;
-                    // we don't add this termination condition to the while statement
-                    //   because we also want the token that terminates the statement.
-                    if (tokenList[pos - 1].TokenType == RToken.TokenTypes.REndStatement)
-                    {
-                        break;
-                    }
-                }
-
-                // restructure the statement's token list into a token tree
-                var tokenTreePresentation = GetTokenTreePresentation(statementTokens);
-                var tokenTreeBrackets = GetTokenTreeBrackets(tokenTreePresentation);
-                var tokenTreeCommas = GetTokenTreeCommas(tokenTreeBrackets);
-                var tokenTreeFunctions = GetTokenTreeFunctions(tokenTreeCommas);
-                var tokenTreeOperators = GetTokenTreeOperators(tokenTreeFunctions);
-
-                if (tokenTreeOperators.Count == 0
-                    || (tokenTreeOperators.Count == 1 && pos < tokenList.Count)
-                    || tokenTreeOperators.Count > 2)
-                {
-                    throw new Exception("The token tree for a statement must contain a single token "
-                            + "followed by an endStatement token.\n"
-                            + "Special case: for the last statement in the script, an endStatement "
-                            + "token is optional.");
-                }
-                tokenTreeList.Add(tokenTreeOperators[0].CloneMe());
-                if (tokenTreeOperators.Count > 1)
-                {
-                    tokenTreeList.Add(tokenTreeOperators[1].CloneMe());
-                }
-            }
-            return tokenTreeList;
+            var tokenTreePresentation = GetTokenTreePresentation(tokenList);
+            var tokenTreeBrackets = GetTokenTreeBrackets(tokenTreePresentation);
+            var tokenTreeCommas = GetTokenTreeCommas(tokenTreeBrackets);
+            var tokenTreeFunctions = GetTokenTreeFunctions(tokenTreeCommas);
+            var tokenTreeOperators = GetTokenTreeOperators(tokenTreeFunctions);
+            var tokenTreeEndStatements = GetTokenTreeEndStatements(tokenTreeOperators);
+            return tokenTreeEndStatements;
         }
 
         /// --------------------------------------------------------------------------------------------
@@ -422,7 +431,7 @@ namespace RInsightF461
                 // same precedence group as the parent but was processed first in accordance 
                 // with the left to right rule (e.g. 'a/b*c').
                 if ((_operatorPrecedences[posOperators].Contains(token.Lexeme.Text)
-                     || posOperators == _operatorsUserDefined
+                     || posOperators == _operatorsUserDefined 
                      && token.Lexeme.IsOperatorUserDefinedComplete)
                     && (token.ChildTokens.Count == 0
                         || token.TokenType == RToken.TokenTypes.ROperatorBracket
@@ -449,7 +458,7 @@ namespace RInsightF461
                                     // (binary '+' and '-' have a lower precedence and will be processed later)
                                     break;
                                 }
-                                token.ChildTokens.AddRange(GetOperatorBinaryChildren(tokens,
+                                token.ChildTokens.AddRange(GetOperatorBinaryChildren(tokens, 
                                         ref posTokens, tokenPrev));
                                 prevTokenProcessed = true;
                                 break;
@@ -458,7 +467,7 @@ namespace RInsightF461
                             {
                                 // edge case: if we found a unary '+' or '-', but we are not currently
                                 //            processing the unary '+'and '-' operators
-                                if (_operatorPrecedences[_operatorsUnaryOnly].Contains(token.Lexeme.Text)
+                                if (_operatorPrecedences[_operatorsUnaryOnly].Contains(token.Lexeme.Text) 
                                     && !(posOperators == _operatorsUnaryOnly))
                                 {
                                     break;
@@ -592,7 +601,7 @@ namespace RInsightF461
             while (pos < tokens.Count)
             {
                 token = tokens[pos];
-                pos++;
+                pos ++;
                 switch (token.TokenType)
                 {
                     case RToken.TokenTypes.RSpace:
@@ -603,7 +612,7 @@ namespace RInsightF461
                             {
                                 prefixScriptPos = token.ScriptPosStartStatement;
                             }
-                            prefix += token.Lexeme.Text;
+                            prefix += token.Lexeme.Text;                        
                             break;
                         }
 
@@ -623,16 +632,13 @@ namespace RInsightF461
 
             // Edge case: if there is still presentation information not yet added to a tree element
             // (this may happen if the last statement in the script is not terminated 
-            // with a new line or '}')
+            // with a new line or there is a new line after the final '}').
             if (!string.IsNullOrEmpty(prefix))
             {
-                token = new RToken(new RLexeme(""), prefixScriptPos, RToken.TokenTypes.REmpty);
-                tokensNew.Add(token);
-
-                // add a new end statement token that contains the presentation information
-                token = new RToken(new RLexeme(""), prefixScriptPos + (uint)prefix.Length, RToken.TokenTypes.REndStatement);
-                token.ChildTokens.Add(new RToken(new RLexeme(prefix), prefixScriptPos, RToken.TokenTypes.RPresentation));
-                tokensNew.Add(token);
+                // add a new empty token with the presentation info as its child
+                RToken tokenEmpty = new RToken(new RLexeme(""), prefixScriptPos, RToken.TokenTypes.REmpty);
+                tokenEmpty.ChildTokens.Add(new RToken(new RLexeme(prefix), prefixScriptPos, RToken.TokenTypes.RPresentation));
+                tokensNew.Add(tokenEmpty);
             }
 
             return tokensNew;
@@ -655,7 +661,7 @@ namespace RInsightF461
         /// <returns>                 The <paramref name="tokens"/> list restructured for the binary 
         ///                           operator at position <paramref name="posTokens"/>.</returns>
         /// --------------------------------------------------------------------------------------------
-        private static List<RToken> GetOperatorBinaryChildren(List<RToken> tokens, ref int posTokens,
+        private static List<RToken> GetOperatorBinaryChildren(List<RToken> tokens, ref int posTokens, 
                                                               RToken tokenPrev)
         {
             if (tokenPrev == null)
@@ -703,7 +709,7 @@ namespace RInsightF461
             List<RToken> tokensNew = new List<RToken>();
             if (tokenPrev == null)
             {
-                if (tokens.Count > 2
+                if (tokens.Count > 1
                     && tokens[tokens.Count - 1].TokenType == RToken.TokenTypes.ROperatorBracket)
                 {
                     // this bracket operator has already been processed so no further action needed

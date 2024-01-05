@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace RInsightF461
+namespace RInsight
 {
     /// --------------------------------------------------------------------------------------------
     /// <summary>
@@ -229,8 +229,8 @@ namespace RInsightF461
         private bool _IsOperatorReserved()
         {
             var operators = new string[] { "::", ":::", "$", "@", "^", ":", "%%", "%/%", "%*%",
-                "%o%", "%x%", "%in%", "/", "*", "+", "-", "<", ">", "<=", ">=", "==", "!=", "!",
-                "&", "&&", "|", "||", "|>", "~", "->", "->>", "<-", "<<-", "=", "?", "??" };
+                    "%o%", "%x%", "%in%", "/", "*", "+", "-", "<", ">", "<=", ">=", "==", "!=", "!",
+                    "&", "&&", "|", "||", "|>", "~", "->", "->>", "<-", "<<-", "=", "?", "??" };
             return operators.Contains(Text);
         }
 
@@ -280,7 +280,7 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         private bool _IsSequenceOfSpaces()
         {
-            return Text != "\n" && Regex.IsMatch(Text, "^ *$");
+            return (Text != "\n" && Regex.IsMatch(Text, "^ *$")) || Text == "\t";
         }
 
         /// --------------------------------------------------------------------------------------------
@@ -328,14 +328,14 @@ namespace RInsightF461
                     !(Text == "\r\n" || _IsConstantString()) ||  // >1 char and ends in newline
                     Regex.IsMatch(Text, @".+\r$") ||             // >1 char and ends in carriage return
                     Regex.IsMatch(Text, "^%.*%.+")) // a user-defined operator followed by another char
-            {
+            { 
                 return false;
             }
 
             // if string is a valid lexeme ...
-            if (_IsSyntacticName()
-                || _IsOperatorReserved() || _IsOperatorBrackets() || _IsOperatorUserDefined()
-                || Text == "<<" || _IsNewLine() || Text == "," || Text == ";"
+            if (_IsSyntacticName() 
+                || _IsOperatorReserved() || _IsOperatorBrackets() || _IsOperatorUserDefined() 
+                || Text == "<<" || _IsNewLine() || Text == "," || Text == ";" 
                 || _IsBracket() || _IsSequenceOfSpaces() || _IsComment())
             {
                 return true;
