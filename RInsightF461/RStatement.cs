@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace RInsight
+namespace RInsightF461
 {
     /// <summary>
     /// Represents a single valid R statement.

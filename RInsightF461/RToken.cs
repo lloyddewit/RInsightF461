@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RInsight
+namespace RInsightF461
 {
     /// ----------------------------------------------------------------------------------------------
     /// <summary>

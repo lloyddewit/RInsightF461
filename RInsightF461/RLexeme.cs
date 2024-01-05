@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace RInsight
+namespace RInsightF461
 {
     /// --------------------------------------------------------------------------------------------
     /// <summary>

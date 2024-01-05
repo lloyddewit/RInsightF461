@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 
-namespace RInsight
+namespace RInsightF461
 {
     /// --------------------------------------------------------------------------------------------
     /// <summary>

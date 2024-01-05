@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 
-namespace RInsight
+namespace RInsightF461
 {
     /// <summary>
     /// Parses script written in the R programming language and creates a dictionary of R statements. 
