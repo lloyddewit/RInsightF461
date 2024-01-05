@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RInsightF461
+namespace RInsight
 {
     /// --------------------------------------------------------------------------------------------
     /// <summary>
@@ -9,8 +9,7 @@ namespace RInsightF461
     /// represents a valid R element (identifier, operator, keyword, seperator, bracket etc.).
     /// </summary>
     /// --------------------------------------------------------------------------------------------
-    public class RLexemeList
-    {
+    public class RLexemeList {
 
         /// <summary>
         /// List of R lexemes    
@@ -30,7 +29,7 @@ namespace RInsightF461
         /// 
         /// <param name="script"> The R script to convert (must be syntactically correct R). </param>
         /// --------------------------------------------------------------------------------------------
-        public RLexemeList(string script)
+        public RLexemeList(string script) 
         {
             Lexemes = new List<RLexeme>();
             if (script.Length == 0)
@@ -47,7 +46,7 @@ namespace RInsightF461
                 // Second part of condition is edge case for nested operator brackets (see note below).
                 var lexemeTextExpanded = new RLexeme(lexemeText + lexemeChar);
                 if (lexemeTextExpanded.IsValid &&
-                    !(lexemeTextExpanded.Text == "]]"
+                    !(lexemeTextExpanded.Text == "]]" 
                       && (bracketStack.Count < 1 || bracketStack.Peek())))
                 {
                     lexemeText += lexemeChar;
@@ -75,7 +74,7 @@ namespace RInsightF461
                         {
                             if (bracketStack.Count < 1)
                             {
-                                throw new Exception("Closing bracket detected ('" + lexemeText
+                                throw new Exception("Closing bracket detected ('" + lexemeText 
                                                     + "') with no corresponding open bracket.");
                             }
                             bracketStack.Pop();
@@ -91,7 +90,7 @@ namespace RInsightF461
             var finalLexeme = new RLexeme(lexemeText);
             if (!finalLexeme.IsValid)
             {
-                throw new Exception("Final lexeme ('" + finalLexeme.Text
+                throw new Exception("Final lexeme ('" + finalLexeme.Text 
                                     + "') is not a valid lexeme.");
             }
             Lexemes.Add(finalLexeme);

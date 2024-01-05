@@ -42,15 +42,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RElement.cs" />
-    <Compile Include="RElementAssignable.cs" />
-    <Compile Include="RElementFunction.cs" />
-    <Compile Include="RElementKeyWord.cs" />
-    <Compile Include="RElementOperator.cs" />
-    <Compile Include="RElementProperty.cs" />
     <Compile Include="RLexeme.cs" />
     <Compile Include="RLexemeList.cs" />
-    <Compile Include="RParameter.cs" />
     <Compile Include="RScript.cs" />
     <Compile Include="RStatement.cs" />
     <Compile Include="RToken.cs" />
