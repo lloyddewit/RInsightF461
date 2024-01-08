@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>0.0.3</version>
+    <version>0.0.7</version>
     <title>$title$</title>
     <authors>Stephen Lloyd</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -11,11 +11,11 @@
     <projectUrl>https://github.com/lloyddewit/RInsight/</projectUrl>
     <description>A .Net framemwork version of the RInsight NuGet package.</description>
     <readme>README.md</readme>
-    <releaseNotes>Added support for braces.</releaseNotes>
+    <releaseNotes>Improved non-formatted scripts.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>R Statistics Statistical</tags>
   </metadata>
-    <files>
-        <file src="..\readme.md" target=".\" />
-    </files>
+  <files>
+    <file src="..\README.md" target="" />
+  </files>
 </package>
