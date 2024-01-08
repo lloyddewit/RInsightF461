@@ -73,7 +73,14 @@ namespace RInsightF461
                 }
 
                 RStatement rStatement = (RStatement)entry.Value;
-                strTxt += bIncludeFormatting ? rStatement.Text : rStatement.TextNoFormatting;
+                if (bIncludeFormatting)
+                {
+                    strTxt += rStatement.Text;
+                }
+                else if (rStatement.TextNoFormatting.Length > 0)
+                {
+                    strTxt += rStatement.TextNoFormatting + "\n";
+                }
             }
             return strTxt;
         }
