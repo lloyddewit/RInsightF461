@@ -59,7 +59,12 @@ namespace RInsightF461
                     {
                         TextNoFormatting += ";";
                     }
-                    else if (!tokenFlat.IsPresentation)
+                    else if (tokenFlat.TokenType == RToken.TokenTypes.RKeyWord 
+                             && tokenFlat.Lexeme.Text == "else")
+                    {
+                        TextNoFormatting += " else ";
+                    }
+                    else if (!tokenFlat.IsPresentation) // ignore presentation tokens
                     {
                         TextNoFormatting += tokenFlat.Lexeme.Text;
                     }
