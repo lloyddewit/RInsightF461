@@ -230,7 +230,8 @@ namespace RInsightF461
         {
             var operators = new string[] { "::", ":::", "$", "@", "^", ":", "%%", "%/%", "%*%",
                     "%o%", "%x%", "%in%", "/", "*", "+", "-", "<", ">", "<=", ">=", "==", "!=", "!",
-                    "&", "&&", "|", "||", "|>", "~", "->", "->>", "<-", "<<-", "=", "?", "??" };
+                    "&", "&&", "|", "||", "|>", "~", "->", "->>", "<-", "<<-", "=", "?", "??", "!!",
+                    ":=" };
             return operators.Contains(Text);
         }
 
@@ -243,7 +244,7 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         private bool _IsOperatorUnary()
         {
-            var operatorUnaries = new string[] { "+", "-", "!", "~", "?", "??" };
+            var operatorUnaries = new string[] { "+", "-", "!", "~", "?", "??", "!!" };
             return operatorUnaries.Contains(Text);
         }
 
