@@ -68,8 +68,8 @@ namespace RInsightF461
         /// <summary>   The token type (function name, key word, comment etc.).  </summary>
         public TokenTypes TokenType { get; private set; }
 
-        /// <summary> The position of the lexeme in the script from which the lexeme was extracted. </summary>
-        private uint _scriptPos;
+        /// <summary> The position of the lexeme in the script from which the lexeme was extracted. todo reorder and make read only</summary>
+        public uint ScriptPos;
 
         /// --------------------------------------------------------------------------------------------
         /// <summary>
@@ -89,10 +89,9 @@ namespace RInsightF461
         {
             ChildTokens = new List<RToken>();
             Lexeme = lexeme;
-            _scriptPos = scriptPos;
+            ScriptPos = scriptPos;
             TokenType = tokenType;
         }
-
 
         /// --------------------------------------------------------------------------------------------
         /// <summary>
@@ -132,7 +131,7 @@ namespace RInsightF461
 
             Lexeme = lexemeCurrent;
             ChildTokens = new List<RToken>();
-            _scriptPos = scriptPosNew;
+            ScriptPos = scriptPosNew;
 
             if (lexemeCurrent.IsKeyWord)
             {
@@ -159,7 +158,7 @@ namespace RInsightF461
             }
             else if (lexemeCurrent.IsNewLine)
             {
-                TokenType = TokenTypes.RNewLine; 
+                TokenType = TokenTypes.RNewLine;
             }
             else if (lexemeCurrent.Text == ";")
             {
@@ -212,7 +211,7 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         public RToken CloneMe()
         {
-            var token = new RToken(Lexeme, _scriptPos, TokenType);
+            var token = new RToken(Lexeme, ScriptPos, TokenType);
             foreach (RToken child in ChildTokens)
             {
                 token.ChildTokens.Add(child.CloneMe());
@@ -281,7 +280,7 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         private uint GetPosEndStatement()
         {
-            uint posEndStatement = _scriptPos + (uint)Lexeme.Text.Length;
+            uint posEndStatement = ScriptPos + (uint)Lexeme.Text.Length;
             foreach (RToken token in ChildTokens)
             {
                 posEndStatement = Math.Max(posEndStatement, token.GetPosEndStatement());
@@ -299,7 +298,7 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         private uint GetPosStartStatement()
         {
-            uint posStartStatement = _scriptPos;
+            uint posStartStatement = ScriptPos;
             foreach (RToken token in ChildTokens)
             {
                 posStartStatement = Math.Min(posStartStatement, token.GetPosStartStatement());

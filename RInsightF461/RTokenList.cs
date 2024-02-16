@@ -38,7 +38,7 @@ namespace RInsightF461
                 new string[] { "$", "@" },
                 new string[] { "[", "[[" }, // bracket operators
                 new string[] { "^" },       // right to left precedence
-                new string[] { "-", "+" },  // unary operarors
+                new string[] { "-", "+" },  // unary operators
                 new string[] { ":" },
                 new string[] { "%" },       // any operator that starts with '%' (including user-defined operators)
                 new string[] { "|>" },
@@ -78,7 +78,30 @@ namespace RInsightF461
 
         /// --------------------------------------------------------------------------------------------
         /// <summary>
-        /// Checks if <paramref name="tokens"/> has enough tokens from position 
+        /// Checks if <paramref name="tokens"/> has enough tokens from position todo delete?
+        /// <paramref name="posTokens"/> onwards to form a valid 'if-else' statement.
+        /// Raises an exception if there are not enough tokens, else just returns
+        /// </summary>
+        /// <param name="tokens">    The list of tokens. </param>
+        /// <param name="posTokens"> The position of the current token in the list. </param>
+        /// <exception cref="Exception"></exception>
+        /// --------------------------------------------------------------------------------------------
+        private static void CheckForLoop(List<RToken> tokens, int posTokens)
+        {
+            // move to statement after condition
+            int pos = posTokens;
+            pos += GetEndStatementJump(tokens, pos); // jump to token after 'for'<-- here
+            pos += 2;                                // jump to token after 'for(a in 1:5)b'<-- here
+
+            if (pos > tokens.Count)
+            {
+                throw new Exception("Not enough tokens to complete statement.");
+            }
+        }
+
+        /// --------------------------------------------------------------------------------------------
+        /// <summary>
+        /// Checks if <paramref name="tokens"/> has enough tokens from position todo delete?
         /// <paramref name="posTokens"/> onwards to form a valid 'if-else' statement.
         /// Raises an exception if there are not enough tokens, else just returns
         /// </summary>
@@ -123,15 +146,15 @@ namespace RInsightF461
         /// 
         /// <returns> The total number of tokens to jump including end statement tokens.</returns>
         /// --------------------------------------------------------------------------------------------
-        private static int GetEndStatementJump(List<RToken> tokens, int pos,
+        private static int GetEndStatementJump(List<RToken> tokens, int pos, 
                                                bool mustHaveTokenAfter = true)
         {
             int jumpTotal = 1;
             if (pos + jumpTotal >= tokens.Count)
             {
-                if (mustHaveTokenAfter)
+                if (mustHaveTokenAfter) 
                 {
-                    throw new Exception("Not enough tokens to legally complete statement.");
+                    throw new Exception("Not enough tokens to legally complete statement."); 
                 }
                 return jumpTotal;
             }
@@ -164,7 +187,7 @@ namespace RInsightF461
         }
 
         /// --------------------------------------------------------------------------------------------
-        /// <summary>
+        /// <summary> todo delete?
         /// Returns the next token in the <paramref name="tokens"/> list, after <paramref name="pos"/>.
         /// If the next token is an end statement, then reclassifies it as a new line token and makes 
         /// it the first child of the next token.
@@ -177,32 +200,35 @@ namespace RInsightF461
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         /// --------------------------------------------------------------------------------------------
-        private RToken GetNextTokenNotEndStatement(List<RToken> tokens, ref int pos)
+        private static RToken GetNextTokenNotEndStatement(List<RToken> tokens, ref int pos)
         {
             RToken token = GetNextToken(tokens, pos);
             pos++;
-            if (token.TokenType != RToken.TokenTypes.REndStatement)
-            {
-                return token;
-            }
+            //todo
+            return token;
 
-            // reclassify end statement token as a new line token and make it first child of next token
-            RToken tokenNewLine = token.CloneMe();
-            tokenNewLine.SetAsNewLine();
-            var startPos = tokenNewLine.ScriptPosStartStatement;
-            var tokenFlat = TokensFlat.Find(item =>
-                                            item.ScriptPosStartStatement >= startPos
-                                            && item.TokenType == RToken.TokenTypes.REndStatement);
-            if (tokenFlat == null)
-            {
-                throw new Exception("Could not find expected end statement in flat token list.");
-            }
-            tokenFlat.SetAsNewLine();
+            //if (token.TokenType != RToken.TokenTypes.REndStatement)
+            //{
+            //    return token;
+            //}
 
-            RToken tokenNext = GetNextToken(tokens, pos);
-            tokenNext.ChildTokens.Insert(0, tokenNewLine);
-            pos++;
-            return tokenNext;
+            //// reclassify end statement token as a new line token and make it first child of next token
+            //RToken tokenNewLine = token.CloneMe();
+            //tokenNewLine.SetAsNewLine();
+            //var startPos = tokenNewLine.ScriptPosStartStatement;
+            //var tokenFlat = TokensFlat.Find(item => 
+            //                                item.ScriptPosStartStatement >= startPos 
+            //                                && item.TokenType == RToken.TokenTypes.REndStatement);
+            //if (tokenFlat == null)
+            //{
+            //    throw new Exception("Could not find expected end statement in flat token list.");
+            //}
+            //tokenFlat.SetAsNewLine();
+
+            //RToken tokenNext = GetNextToken(tokens, pos);
+            //tokenNext.ChildTokens.Insert(0, tokenNewLine);
+            //pos++;
+            //return tokenNext;
         }
 
         /// --------------------------------------------------------------------------------------------
@@ -397,9 +423,32 @@ namespace RInsightF461
             return tokensNew;
         }
 
+        /// <summary>
+        /// todo + position
+        /// </summary>
+        /// <param name="tokens"></param>
+        /// <returns></returns>
+        private RToken GetTokenStatementBlock(RToken token)
+        {
+            if (token.TokenType == RToken.TokenTypes.RBracket && token.Lexeme.Text == "{")
+            {
+                return token;
+            }
+
+            foreach (RToken tokenChild in token.ChildTokens)
+            {
+                RToken tokenStatementBlock = GetTokenStatementBlock(tokenChild);
+                if (tokenStatementBlock != null)
+                {
+                    return tokenStatementBlock;
+                }
+            }
+            return null;
+        }
+
         /// --------------------------------------------------------------------------------------------
         /// <summary>
-        /// Traverses the <paramref name="tokens"/> tree. If the token is an end statement then it 
+        /// Traverses the <paramref name="tokens"/> tree. If the token is an end statement then it todo
         /// appends the end statement token to the child list of the previous token. 
         /// Returns a list of tokens where each top-level token represents a single statement including 
         /// the statement's end statement token.</summary>
@@ -407,6 +456,43 @@ namespace RInsightF461
         /// <param name="tokens">  The token tree to restructure. </param>
         /// <returns>              A token tree restructured for end statement tokens. </returns>
         /// --------------------------------------------------------------------------------------------
+        private void GetTokenTreeEndStatementNewLines(List<RToken> tokens, bool isStatementBlock = true)
+        {
+            foreach (RToken token in tokens)
+            {
+                // if token is a presentation token, then skip
+                if (token.TokenType == RToken.TokenTypes.RPresentation)
+                {
+                    continue;
+                }
+
+                //find token with lowest StartPos
+                RToken tokenFirstInStatement = GetTokenWithLowestScriptPos(token);
+
+                if (tokenFirstInStatement.TokenType == RToken.TokenTypes.RPresentation)
+                {
+                    // if token text contains \r or \n
+                    if (tokenFirstInStatement.Lexeme.Text.Contains("\r") || tokenFirstInStatement.Lexeme.Text.Contains("\n"))
+                    {
+                        SetNewLineAsEndStatement(tokenFirstInStatement);
+                    }
+                }
+
+                // get first child token that is a `{' 
+                RToken tokenStatementBlock = GetTokenStatementBlock(token);
+                // if not null
+                if (tokenStatementBlock != null)
+                {
+                    GetTokenTreeEndStatementNewLines(tokenStatementBlock.ChildTokens);
+                }
+            }
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="tokens"></param>
+        /// <returns></returns>
         private static List<RToken> GetTokenTreeEndStatements(List<RToken> tokens)
         {
             var tokensNew = new List<RToken>();
@@ -474,6 +560,53 @@ namespace RInsightF461
             return tokensNew;
         }
 
+        /// <summary>
+        /// todo also order
+        /// </summary>
+        /// <param name="tokens"></param>
+        /// <param name="pos"></param>
+        /// <returns></returns>
+        private static List<RToken> GetKeyWordStatementChildren(List <RToken> tokens, ref int pos)
+        {
+            List <RToken> tokensNew = new List<RToken>();
+            RToken token = tokens[pos];
+            List<string> keywordsWithOnePart = new List<string> { "repeat", "else" };
+            List<string> keywordsWithTwoParts = new List<string> { "if", "for", "while", "function" };
+
+            bool tokenHasOnePart = token.TokenType == RToken.TokenTypes.RKeyWord && keywordsWithOnePart.Contains(token.Lexeme.Text);
+            bool tokenHasTwoParts = token.TokenType == RToken.TokenTypes.RKeyWord && keywordsWithTwoParts.Contains(token.Lexeme.Text);
+
+            while (tokenHasOnePart || tokenHasTwoParts)
+            {
+                token = GetNextToken(tokens, pos);
+                pos++;
+                tokensNew.Add(token);
+
+                if (tokenHasTwoParts)
+                {
+                    token = GetNextToken(tokens, pos);
+                    pos++;
+                    tokensNew.Add(token);
+
+                    //if next token is "else"
+                    if (pos < tokens.Count-1 && tokens[pos+1].Lexeme.Text == "else")
+                    {
+                        token = GetNextToken(tokens, pos);
+                        pos++;
+                        tokensNew.Add(token);
+                        token = GetNextToken(tokens, pos);
+                        pos++;
+                        tokensNew.Add(token);
+                    }
+                }
+
+                tokenHasOnePart = token.TokenType == RToken.TokenTypes.RKeyWord && keywordsWithOnePart.Contains(token.Lexeme.Text);
+                tokenHasTwoParts = token.TokenType == RToken.TokenTypes.RKeyWord && keywordsWithTwoParts.Contains(token.Lexeme.Text);
+            }
+
+            return tokensNew;
+        }
+
         /// --------------------------------------------------------------------------------------------
         /// <summary>
         /// Traverses the <paramref name="tokens"/> tree. If the token is a key word ("if", "else", 
@@ -497,47 +630,61 @@ namespace RInsightF461
                     {
                         case "if":
                             {
-                                CheckIfElseStatement(tokens, pos);
+                                //CheckIfElseStatement(tokens, pos);
 
-                                // make the 'if' statement's condition a child of the 'if' statement
-                                token.ChildTokens.Add(GetNextTokenNotEndStatement(tokens, ref pos));
-
-
-                                // make the 'if' statement's statement a child of the 'if' statement
-                                token.ChildTokens.Add(GetNextTokenNotEndStatement(tokens, ref pos));
-
+                                // make the 'if' statement's condition and statement children of the 'if' token
+                                //todo
+                                token.ChildTokens.AddRange(GetKeyWordStatementChildren(tokens, ref pos));
+                            
                                 // if there is no 'else' on the same line as the 'if' statement,
                                 //     then we are done
-                                if (pos == tokens.Count - 1 || tokens[pos + 1].Lexeme.Text != "else")
-                                {
-                                    break;
-                                }
+                                //if (pos == tokens.Count -1 || tokens[pos + 1].Lexeme.Text != "else")
+                                //{
+                                //    break;
+                                //}
 
-                                // create the 'else' token
-                                pos++;
-                                RToken tokenElse = tokens[pos].CloneMe();
+                                //// create the 'else' token
+                                //pos++;
+                                //RToken tokenElse = tokens[pos].CloneMe();
 
-                                // make the 'else' statement's statement a child of the 'else' statement
-                                tokenElse.ChildTokens.Add(GetNextTokenNotEndStatement(tokens, ref pos));
+                                //// make the 'else' statement's statement a child of the 'else' statement
+                                //tokenElse.ChildTokens.AddRange(GetKeyWordStatementChildren(tokens, ref pos));
 
-                                // make the 'else' statement a child of the 'if' statement
-                                token.ChildTokens.Add(tokenElse);
+                                //// make the 'else' statement a child of the 'if' statement
+                                //token.ChildTokens.Add(tokenElse);
                                 break;
                             }
                         case "else":
-                            // ignore, already processed by 'if' statement
-                            break;
-                        case "repeat":
-                        case "while":
-                        case "function":
-                        case "for":
-                        case "in":
-                        case "next":
-                        case "break":
                             {
-                                // todo
+                                token.ChildTokens.AddRange(GetKeyWordStatementChildren(tokens, ref pos));
+                                break;
+                            }                        
+                        case "for":
+                            {
+                                //CheckForLoop(tokens, pos);
+                                // make the 'for' loop's condition and statement children of the 'for' token
+                                token.ChildTokens.AddRange(GetKeyWordStatementChildren(tokens, ref pos));
                                 break;
                             }
+                        case "repeat":
+                            {
+                                token.ChildTokens.AddRange(GetKeyWordStatementChildren(tokens, ref pos));
+                                break;
+                            }
+                        case "while":
+                            {
+                                token.ChildTokens.AddRange(GetKeyWordStatementChildren(tokens, ref pos));
+                                break;
+                            }
+                        case "function":
+                            {
+                                token.ChildTokens.AddRange(GetKeyWordStatementChildren(tokens, ref pos));
+                                break;
+                            }
+                        case "in":    // ignore, already processed by 'for'
+                        case "next":  // ignore, no action needed
+                        case "break": // ignore, no action needed
+                            break;
                     }
                 }
                 token.ChildTokens = GetTokenTreeKeyWords(token.CloneMe().ChildTokens);
@@ -559,37 +706,66 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         private List<RToken> GetTokenTreeList(List<RToken> tokenList)
         {
-            var tokenTreeBrackets = GetTokenTreeBrackets(tokenList);
-            var tokenTreeNewLines = GetTokenTreeNewLines(tokenTreeBrackets);
-            var tokenTreePresentation = GetTokenTreePresentation(tokenTreeNewLines);
-            var tokenTreeCommas = GetTokenTreeCommas(tokenTreePresentation);
+            var tokenTreePresentation = GetTokenTreePresentation(tokenList);//todo
+            var tokenTreeBrackets = GetTokenTreeBrackets(tokenTreePresentation);
+            //var tokenTreeNewLines = GetTokenTreeNewLines(tokenTreeBrackets);
+            var tokenTreeCommas = GetTokenTreeCommas(tokenTreeBrackets);
             var tokenTreeFunctions = GetTokenTreeFunctions(tokenTreeCommas);
             var tokenTreeOperators = GetTokenTreeOperators(tokenTreeFunctions);
             var tokenTreeKeyWords = GetTokenTreeKeyWords(tokenTreeOperators);
             var tokenTreeEndStatements = GetTokenTreeEndStatements(tokenTreeKeyWords);
+            GetTokenTreeEndStatementNewLines(tokenTreeEndStatements);
             return tokenTreeEndStatements;
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        static RToken GetTokenWithLowestScriptPos(RToken token)
+        {
+            RToken lowest = token;
+
+            // don't search compound statements
+            if (token.TokenType == RToken.TokenTypes.RBracket && token.Lexeme.Text == "{")
+            {
+                return lowest;
+            }
+
+            foreach (var child in token.ChildTokens)
+            {
+                var lowestInChild = GetTokenWithLowestScriptPos(child);
+                if (lowestInChild.ScriptPos < lowest.ScriptPos)
+                {
+                    lowest = lowestInChild;
+                }
+            }
+
+            return lowest;
         }
 
         /// --------------------------------------------------------------------------------------------
         /// <summary>
+        /// todo delete?
         /// Traverses the tree of tokens in <paramref name="tokens"/>. If a newline token is found, 
         /// then checks to see if the newline token should be an end statement token. If so, then it 
         /// reclassifies the newline token as an end statement token.
         /// </summary>
         /// <param name="tokens"> The token tree to traverse.</param>
-        /// <param name="inParamList"> True if the token list is a list of function parameters 
+        /// <param name="inConditionOrParamList"> True if the token list is a list of function parameters 
         ///     e.g. `myFunction(a,b,c)`) 
         ///     or a list of parameters inside a bracket operator 
         ///     e.g. `myData[a,b,c]`). 
         ///     In this case, the function knows that a newline should never be an end statement.</param>
         /// <returns>The processed token tree</returns>
         /// --------------------------------------------------------------------------------------------
-        private List<RToken> GetTokenTreeNewLines(List<RToken> tokens, bool inParamList = false)
+        private List<RToken> GetTokenTreeNewLines(List<RToken> tokens, bool inConditionOrParamList = false)
         {
             var tokensNew = new List<RToken>();
             bool statementContainsElement = false;
             bool tokenPrevIsOperator = false;
-            bool tokenPrevIsFunctionName = false;
+            bool tokenPrevHasConditionOrParams = false;
             int posTokens = 0;
             while (posTokens < tokens.Count)
             {
@@ -598,27 +774,29 @@ namespace RInsightF461
 
                 if (token.TokenType == RToken.TokenTypes.RNewLine
                     && statementContainsElement
-                    && !inParamList
+                    && !inConditionOrParamList
                     && !tokenPrevIsOperator)
                 {
-                    token = SetNewLineAsEndStatement(token);
+                    //todo token = SetNewLineAsEndStatement(token);
                 }
                 if (token.TokenType == RToken.TokenTypes.REndStatement)
                 {
                     statementContainsElement = false;
                     tokenPrevIsOperator = false;
-                    tokenPrevIsFunctionName = false;
                 }
 
                 token.ChildTokens = GetTokenTreeNewLines(
-                        token.CloneMe().ChildTokens, tokenPrevIsFunctionName
+                        token.CloneMe().ChildTokens, tokenPrevHasConditionOrParams 
                         || token.TokenType == RToken.TokenTypes.ROperatorBracket);
                 tokensNew.Add(token.CloneMe());
 
                 if (!token.IsPresentation && token.TokenType != RToken.TokenTypes.REndStatement)
                 {
                     statementContainsElement = true;
-                    tokenPrevIsFunctionName = token.TokenType is RToken.TokenTypes.RFunctionName;
+                    List<string> keyWordsWithComdition = new List<string> { "if", "while", "for"};
+                    tokenPrevHasConditionOrParams = token.TokenType is RToken.TokenTypes.RFunctionName
+                            || (token.TokenType is RToken.TokenTypes.RKeyWord
+                                && keyWordsWithComdition.Contains(token.Lexeme.Text));
                     tokenPrevIsOperator = token.TokenType is RToken.TokenTypes.ROperatorBinary
                                                 || token.TokenType is RToken.TokenTypes.ROperatorUnaryRight;
                 }
@@ -840,7 +1018,7 @@ namespace RInsightF461
             while (pos < tokens.Count)
             {
                 token = tokens[pos];
-                pos++;
+                pos ++;
                 switch (token.TokenType)
                 {
                     case RToken.TokenTypes.RSpace:
@@ -913,22 +1091,32 @@ namespace RInsightF461
             RToken.TokenTypes tokenType = tokens[posTokens].TokenType;
             string tokenText = tokens[posTokens].Lexeme.Text ?? "";
 
-            // make the previous and next tokens, the children of the current token
+            // make the previous token, a child of the current token
             childTokens.Add(tokenPrev.CloneMe());
-            childTokens.Add(GetNextToken(tokens, posTokens));
+
+            // make the next token, a child of the current token
+            RToken tokenNext = GetNextToken(tokens, posTokens);
+            childTokens.Add(tokenNext);
             posTokens++;
+            //todo edge case: if next token was a keyword, then we may need to also add the keyword's associated condition and statement
+            childTokens.AddRange(GetKeyWordStatementChildren(tokens, ref posTokens));
+        
             // while next token is the same operator (e.g. 'a+b+c+d...'), 
             // then keep making the next token, the child of the current operator token
             while (posTokens < tokens.Count - 1)
             {
-                RToken tokenNext = GetNextToken(tokens, posTokens);
+                tokenNext = GetNextToken(tokens, posTokens);
                 if (tokenType != tokenNext.TokenType || tokenText != tokenNext.Lexeme.Text)
                 {
                     break;
                 }
                 posTokens++;
-                childTokens.Add(GetNextToken(tokens, posTokens));
+
+                tokenNext = GetNextToken(tokens, posTokens);
+                childTokens.Add(tokenNext);
                 posTokens++;
+                //todo edge case: if next token was a keyword, then we may need to also add the keyword's associated condition and statement
+                childTokens.AddRange(GetKeyWordStatementChildren(tokens, ref posTokens));
             }
             return childTokens;
         }
@@ -985,13 +1173,9 @@ namespace RInsightF461
         /// <returns>            The token converted to an end statement token.</returns>
         /// <exception cref="Exception"></exception>
         /// --------------------------------------------------------------------------------------------
-        private RToken SetNewLineAsEndStatement(RToken token)
+        private void SetNewLineAsEndStatement(RToken token)
         {
-            RToken tokenEndStatement = token.CloneMe();
-            tokenEndStatement.SetAsEndStatement();
-
-            var startPos = tokenEndStatement.ScriptPosStartStatement;
-            var tokenFlat = TokensFlat.Find(item => item.ScriptPosStartStatement >= startPos
+            var tokenFlat = TokensFlat.Find(item => item.ScriptPosStartStatement >= token.ScriptPosStartStatement
                                             && item.TokenType == RToken.TokenTypes.RNewLine);
             if (tokenFlat == null)
             {
@@ -999,7 +1183,21 @@ namespace RInsightF461
             }
             tokenFlat.SetAsEndStatement();
 
-            return tokenEndStatement;
+
+            //RToken tokenEndStatement = token.CloneMe();
+            //tokenEndStatement.SetAsEndStatement();
+
+            //var startPos = tokenEndStatement.ScriptPosStartStatement;
+            //var tokenFlat = TokensFlat.Find(item => item.ScriptPosStartStatement >= startPos 
+            //                                && item.TokenType == RToken.TokenTypes.RNewLine);
+            //if (tokenFlat == null)
+            //{
+            //    throw new Exception("Could not find expected new line in flat token list.");
+            //}
+            //tokenFlat.SetAsEndStatement();
+
+            //return tokenEndStatement;
         }
+
     }
 }
