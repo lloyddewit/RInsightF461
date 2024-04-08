@@ -55,6 +55,9 @@ namespace RInsightF461
         /// <summary> The lexeme associated with the token. </summary>
         public RLexeme Lexeme { get; }
 
+        /// <summary> The position of the lexeme in the script from which the lexeme was extracted. </summary>
+        public uint ScriptPos { get; }
+
         /// <summary>
         /// The start position in the script of the statement associated with this token.
         /// </summary>
@@ -67,9 +70,6 @@ namespace RInsightF461
 
         /// <summary>   The token type (function name, key word, comment etc.).  </summary>
         public TokenTypes TokenType { get; private set; }
-
-        /// <summary> The position of the lexeme in the script from which the lexeme was extracted. todo reorder and make read only</summary>
-        public uint ScriptPos;
 
         /// --------------------------------------------------------------------------------------------
         /// <summary>
@@ -230,19 +230,6 @@ namespace RInsightF461
         public void SetAsEndStatement()
         {
             TokenType = TokenTypes.REndStatement;
-        }
-
-        /// --------------------------------------------------------------------------------------------
-        /// <summary>
-        /// Sets the token type to <see cref="TokenTypes.RNewLine"/>.
-        /// This function is needed because the constructor cannot always correctly identify whether 
-        /// a newline is an end statement or just for readability. During later parsing, the correct 
-        /// token type can be identified.
-        /// </summary>
-        /// --------------------------------------------------------------------------------------------
-        public void SetAsNewLine()
-        {
-            TokenType = TokenTypes.RNewLine;
         }
 
         /// --------------------------------------------------------------------------------------------
