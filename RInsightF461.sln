@@ -5,6 +5,8 @@ VisualStudioVersion = 17.8.34322.80
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RInsightF461", "RInsightF461\RInsightF461.csproj", "{CD28AB06-4226-45D7-B9D3-5891E60A8E0D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RInsightF461TestXUnit", "RInsightF461TestXUnit\RInsightF461TestXUnit.csproj", "{AEB2BB41-5E0C-4CCB-93BD-82092FE35E0F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{CD28AB06-4226-45D7-B9D3-5891E60A8E0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CD28AB06-4226-45D7-B9D3-5891E60A8E0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CD28AB06-4226-45D7-B9D3-5891E60A8E0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AEB2BB41-5E0C-4CCB-93BD-82092FE35E0F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AEB2BB41-5E0C-4CCB-93BD-82092FE35E0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AEB2BB41-5E0C-4CCB-93BD-82092FE35E0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AEB2BB41-5E0C-4CCB-93BD-82092FE35E0F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
