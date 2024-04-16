@@ -25,6 +25,11 @@ namespace RInsightF461
         /// </summary>
         public string TextNoFormatting{ get; }
 
+        /// <summary>
+        /// todo
+        /// </summary>
+        private RToken _token;
+
         /// --------------------------------------------------------------------------------------------
         /// <summary>
         /// Constructs an object representing a valid R statement from the <paramref name="token"/> 
@@ -38,11 +43,12 @@ namespace RInsightF461
         public RStatement(RToken token, List<RToken> tokensFlat)
         {
             var assignments = new HashSet<string> { "->", "->>", "<-", "<<-", "=" };
-            IsAssignment = token.TokenType == RToken.TokenTypes.ROperatorBinary 
-                           && assignments.Contains(token.Lexeme.Text);
+            _token = token;
+            IsAssignment = _token.TokenType == RToken.TokenTypes.ROperatorBinary 
+                           && assignments.Contains(_token.Lexeme.Text);
 
-            StartPos = token.ScriptPosStartStatement;
-            uint endPos = token.ScriptPosEndStatement;
+            StartPos = _token.ScriptPosStartStatement;
+            uint endPos = _token.ScriptPosEndStatement;
             TextNoFormatting = GetTextNoFormatting(tokensFlat, StartPos, endPos);
 
             // create a lossless text representation of the statement including all presentation
@@ -98,6 +104,85 @@ namespace RInsightF461
                 tokenPrevIsEndStatement = tokenFlat.TokenType == RToken.TokenTypes.REndStatement;
             }
             StartPos += (uint)startPosAdjustment;
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="strFunctionName"></param>
+        /// <param name="iParameterNumber"></param>
+        /// <returns></returns>
+        public RToken GetToken(string functionName, int iParameterNumber)
+        {
+            RToken tokenFunction = GetTokenFunction(_token, functionName);
+            RToken tokenParameter = GetTokenParameter(tokenFunction, iParameterNumber);
+            return tokenParameter;
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="token"></param>
+        /// <param name="functionName"></param>
+        /// <returns></returns>
+        private RToken GetTokenFunction(RToken token, string functionName)
+        {
+            if (token.TokenType == RToken.TokenTypes.RFunctionName && token.Lexeme.Text == functionName)
+            {
+                return token;
+            }
+
+            foreach (var childToken in token.ChildTokens)
+            {
+                var result = GetTokenFunction(childToken, functionName);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="token"></param>
+        /// <param name="iParameterNumber"></param>
+        /// <returns></returns>
+        private RToken GetTokenParameter(RToken token, int iParameterNumber)
+        {
+            int posFirstNonPresentationChild =
+                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+
+            RToken tokenBracket = token.ChildTokens[posFirstNonPresentationChild];
+
+            if (iParameterNumber == 0)
+            {
+                return GetTokenParameterValue(tokenBracket);
+            }
+
+            RToken tokenComma = tokenBracket.ChildTokens[posFirstNonPresentationChild + iParameterNumber];
+            return GetTokenParameterValue(tokenComma);
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        private RToken GetTokenParameterValue(RToken token)
+        {
+            int posFirstNonPresentationChild = token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+
+            RToken tokenParameter = token.ChildTokens[posFirstNonPresentationChild];
+            if (tokenParameter.TokenType == RToken.TokenTypes.ROperatorBinary && tokenParameter.Lexeme.Text == "=")
+            {
+                posFirstNonPresentationChild = tokenParameter.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+                int posParameterValue = posFirstNonPresentationChild + 1;
+                return tokenParameter.ChildTokens[posParameterValue];
+            }
+            return tokenParameter;
         }
 
         /// --------------------------------------------------------------------------------------------

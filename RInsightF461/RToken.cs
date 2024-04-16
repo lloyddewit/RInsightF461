@@ -53,7 +53,7 @@ namespace RInsightF461
         public bool IsPresentation => GetIsPresentation();
 
         /// <summary> The lexeme associated with the token. </summary>
-        public RLexeme Lexeme { get; }
+        public RLexeme Lexeme;
 
         /// <summary> The position of the lexeme in the script from which the lexeme was extracted. </summary>
         public uint ScriptPos { get; }
