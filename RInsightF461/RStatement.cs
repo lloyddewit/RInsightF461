@@ -115,8 +115,11 @@ namespace RInsightF461
         public RToken GetToken(string functionName, int iParameterNumber)
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
-            RToken tokenParameter = GetTokenParameter(tokenFunction, iParameterNumber);
-            return tokenParameter;
+            if (tokenFunction.TokenType == RToken.TokenTypes.RFunctionName)
+            {
+                return GetTokenParameterFunction(tokenFunction, iParameterNumber);
+            }
+            return GetTokenParameterOperator(tokenFunction, iParameterNumber);
         }
 
         /// <summary>
@@ -127,7 +130,9 @@ namespace RInsightF461
         /// <returns></returns>
         private RToken GetTokenFunction(RToken token, string functionName)
         {
-            if (token.TokenType == RToken.TokenTypes.RFunctionName && token.Lexeme.Text == functionName)
+            if ((token.TokenType == RToken.TokenTypes.RFunctionName 
+                || token.TokenType == RToken.TokenTypes.ROperatorBinary) 
+               && token.Lexeme.Text == functionName)
             {
                 return token;
             }
@@ -150,7 +155,7 @@ namespace RInsightF461
         /// <param name="token"></param>
         /// <param name="iParameterNumber"></param>
         /// <returns></returns>
-        private RToken GetTokenParameter(RToken token, int iParameterNumber)
+        private RToken GetTokenParameterFunction(RToken token, int iParameterNumber)
         {
             int posFirstNonPresentationChild =
                     token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
@@ -164,6 +169,20 @@ namespace RInsightF461
 
             RToken tokenComma = tokenBracket.ChildTokens[posFirstNonPresentationChild + iParameterNumber];
             return GetTokenParameterValue(tokenComma);
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="token"></param>
+        /// <param name="iParameterNumber"></param>
+        /// <returns></returns>
+        private RToken GetTokenParameterOperator(RToken token, int iParameterNumber)
+        {
+            int posFirstNonPresentationChild =
+                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+
+            return token.ChildTokens[posFirstNonPresentationChild + iParameterNumber];
         }
 
         /// <summary>
