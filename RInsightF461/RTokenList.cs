@@ -966,7 +966,7 @@ namespace RInsightF461
                             continue;
                         }
 
-                        // If the ststement is preceded by a newline, then convert the newline to
+                        // If the statement is preceded by a newline, then convert the newline to
                         // an end statement
                         RToken tokenFirstInStatement = GetTokenWithLowestScriptPos(child);
                         if (tokenFirstInStatement.TokenType == RToken.TokenTypes.RPresentation

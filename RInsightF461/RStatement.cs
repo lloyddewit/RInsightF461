@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace RInsightF461
 {
@@ -110,16 +111,22 @@ namespace RInsightF461
         /// todo
         /// </summary>
         /// <param name="strFunctionName"></param>
-        /// <param name="iParameterNumber"></param>
+        /// <param name="parameterNumber"></param>
         /// <returns></returns>
-        public RToken GetToken(string functionName, int iParameterNumber)
+        public void SetToken(string functionName, int parameterNumber, string parameterValue)
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
+            RToken tokenParameterValue;
             if (tokenFunction.TokenType == RToken.TokenTypes.RFunctionName)
             {
-                return GetTokenParameterFunction(tokenFunction, iParameterNumber);
+                tokenParameterValue = GetTokenParameterFunction(tokenFunction, parameterNumber);
             }
-            return GetTokenParameterOperator(tokenFunction, iParameterNumber);
+            else
+            {
+                tokenParameterValue = GetTokenParameterOperator(tokenFunction, parameterNumber);
+            }
+
+            tokenParameterValue.Lexeme.Text = parameterValue;
         }
 
         /// <summary>

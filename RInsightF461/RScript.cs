@@ -17,6 +17,12 @@ namespace RInsightF461
         /// in the script. The dictionary value is the statement itself. </summary>
         public OrderedDictionary statements = new OrderedDictionary();
 
+        /// <summary>
+        /// todo
+        /// </summary>
+        private List<RToken> _tokens;
+        private List<RToken> _tokensFlat;
+
         /// --------------------------------------------------------------------------------------------
         /// <summary>   Parses the R script in <paramref name="strInput"/> and populates the dictionary
         ///             of R statements.
@@ -43,12 +49,12 @@ namespace RInsightF461
             }
 
             var tokenList = new RTokenList(strInput);
-            List<RToken> tokens = tokenList.Tokens;
-            List<RToken> tokensFlat = tokenList.TokensFlat;
+            _tokens = tokenList.Tokens;
+            _tokensFlat = tokenList.TokensFlat;
 
-            foreach (RToken token in tokens)
+            foreach (RToken token in _tokens)
             {
-                var clsStatement = new RStatement(token, tokensFlat);
+                var clsStatement = new RStatement(token, _tokensFlat);
 
                 // Edge case: if the last statement in the script ends with a new line, and there is
                 //     no comments or other text after it, then the statement will be empty. In this
@@ -98,5 +104,26 @@ namespace RInsightF461
             return strTxt;
         }
 
+        public void SetToken(int statementNumber, string functionName, int parameterNumber, string parameterValue)
+        {
+            RStatement statement = statements[statementNumber] as RStatement;
+            statement.SetToken(functionName, parameterNumber, parameterValue);
+
+            // todo move to separate function and share with constructor, also update naming conventions
+            statements = new OrderedDictionary();
+            foreach (RToken token in _tokens)
+            {
+                var clsStatement = new RStatement(token, _tokensFlat);
+
+                // Edge case: if the last statement in the script ends with a new line, and there is
+                //     no comments or other text after it, then the statement will be empty. In this
+                //     case, don't add it to the list of statements.
+                if (clsStatement.Text.Length == 0) break;
+
+                statements.Add(clsStatement.StartPos, clsStatement);
+            }
+
+
+        }
     }
 }
