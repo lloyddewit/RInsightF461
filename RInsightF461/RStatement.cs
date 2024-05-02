@@ -18,18 +18,20 @@ namespace RInsightF461
         /// The text representation of this statement, including all formatting information (comments,
         /// spaces, extra newlines etc.).
         /// </summary>
-        public string Text { get; }
+        public string Text => GetText();
 
         /// <summary>
         /// The text representation of this statement, excluding all formatting information (comments,
         /// spaces, extra newlines etc.).
         /// </summary>
-        public string TextNoFormatting{ get; }
+        public string TextNoFormatting{ get; } //todo call private function
 
         /// <summary>
         /// todo
         /// </summary>
         private RToken _token;
+
+        private List<RToken> _tokensFlat;
 
         /// --------------------------------------------------------------------------------------------
         /// <summary>
@@ -45,20 +47,24 @@ namespace RInsightF461
         {
             var assignments = new HashSet<string> { "->", "->>", "<-", "<<-", "=" };
             _token = token;
+            _tokensFlat = tokensFlat;
+
             IsAssignment = _token.TokenType == RToken.TokenTypes.ROperatorBinary 
                            && assignments.Contains(_token.Lexeme.Text);
 
             StartPos = _token.ScriptPosStartStatement;
+
+            //todo remove creation of Text
             uint endPos = _token.ScriptPosEndStatement;
-            TextNoFormatting = GetTextNoFormatting(tokensFlat, StartPos, endPos);
+            TextNoFormatting = GetTextNoFormatting(_tokensFlat, StartPos, endPos);
 
             // create a lossless text representation of the statement including all presentation
             // information (e.g. spaces, newlines, comments etc.)
             int startPosAdjustment = 0;
             bool tokenPrevIsEndStatement = false;
             bool firstNewLineFound = false;
-            Text = "";
-            foreach (RToken tokenFlat in tokensFlat)
+            string text = "";
+            foreach (RToken tokenFlat in _tokensFlat)
             {
                 if (tokenFlat.TokenType == RToken.TokenTypes.REmpty) continue;
 
@@ -76,7 +82,7 @@ namespace RInsightF461
                         && tokenFlat.IsPresentation
                         && tokenText.Length > 0)
                     {
-                        Text += tokenText;
+                        text += tokenText;
                         if (tokenFlat.Lexeme.IsNewLine)
                         {
                             break;
@@ -87,7 +93,7 @@ namespace RInsightF461
                 }
 
                 // ignore any presentation characters that belong to the previous statement
-                if (Text == ""
+                if (text == ""
                     && StartPos != 0
                     && !tokenPrevIsEndStatement 
                     && !firstNewLineFound
@@ -101,7 +107,7 @@ namespace RInsightF461
                     startPosAdjustment += tokenText.Length;
                     tokenText = "";
                 }
-                Text += tokenText;
+                text += tokenText;
                 tokenPrevIsEndStatement = tokenFlat.TokenType == RToken.TokenTypes.REndStatement;
             }
             StartPos += (uint)startPosAdjustment;
@@ -113,7 +119,7 @@ namespace RInsightF461
         /// <param name="strFunctionName"></param>
         /// <param name="parameterNumber"></param>
         /// <returns></returns>
-        public void SetToken(string functionName, int parameterNumber, string parameterValue)
+        public void SetToken(string functionName, int parameterNumber, string parameterValue, bool isQuoted = false)
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
             RToken tokenParameterValue;
@@ -126,7 +132,72 @@ namespace RInsightF461
                 tokenParameterValue = GetTokenParameterOperator(tokenFunction, parameterNumber);
             }
 
-            tokenParameterValue.Lexeme.Text = parameterValue;
+            tokenParameterValue.Lexeme.Text = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <returns></returns>
+        private string GetText()
+        {
+            //uint startPos = _token.ScriptPosStartStatement;
+            uint endPos = _token.ScriptPosEndStatement;
+
+            // create a lossless text representation of the statement including all presentation
+            // information (e.g. spaces, newlines, comments etc.)
+            // todo int startPosAdjustment = 0;
+            bool tokenPrevIsEndStatement = false;
+            bool firstNewLineFound = false;
+            string text = "";
+            foreach (RToken tokenFlat in _tokensFlat)
+            {
+                if (tokenFlat.TokenType == RToken.TokenTypes.REmpty) continue;
+
+                uint tokenStartPos = tokenFlat.ScriptPos;
+                if (tokenStartPos < StartPos)
+                {
+                    tokenPrevIsEndStatement = tokenFlat.TokenType == RToken.TokenTypes.REndStatement;
+                    continue;
+                }
+                string tokenText = tokenFlat.Lexeme.Text;
+                if (tokenStartPos >= endPos)
+                {
+                    // if next statement has presentation text that belongs with the current statement
+                    if (!tokenPrevIsEndStatement
+                        && tokenFlat.IsPresentation
+                        && tokenText.Length > 0)
+                    {
+                        text += tokenText;
+                        if (tokenFlat.Lexeme.IsNewLine)
+                        {
+                            break;
+                        }
+                        continue;
+                    }
+                    break;
+                }
+
+                // ignore any presentation characters that belong to the previous statement
+                //if (text == ""
+                //    && StartPos != 0
+                //    && !tokenPrevIsEndStatement
+                //    && !firstNewLineFound
+                //    && tokenFlat.IsPresentation
+                //    && tokenText.Length > 0)
+                //{
+                //    if (tokenFlat.Lexeme.IsNewLine)
+                //    {
+                //        firstNewLineFound = true;
+                //    }
+                //    // todo startPosAdjustment += tokenText.Length;
+                //    tokenText = "";
+                //}
+                text += tokenText;
+                tokenPrevIsEndStatement = tokenFlat.TokenType == RToken.TokenTypes.REndStatement;
+            }
+            // todo StartPos += (uint)startPosAdjustment;
+            return text;
         }
 
         /// <summary>
