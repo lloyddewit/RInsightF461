@@ -104,26 +104,21 @@ namespace RInsightF461
             return strTxt;
         }
 
-        public void SetToken(int statementNumber, string functionName, int parameterNumber, string parameterValue)
+        public void SetToken(int statementNumber, string functionName, int parameterNumber, string parameterValue, bool isQuoted = false)
         {
-            RStatement statement = statements[statementNumber] as RStatement;
-            statement.SetToken(functionName, parameterNumber, parameterValue);
+            RStatement statementToUpdate = statements[statementNumber] as RStatement;
+            int adjustment = statementToUpdate.SetToken(functionName, parameterNumber, parameterValue, isQuoted);
 
-            // todo move to separate function and share with constructor, also update naming conventions
-            statements = new OrderedDictionary();
-            foreach (RToken token in _tokens)
+            for (int i = statementNumber + 1; i < statements.Count; i++)
             {
-                var clsStatement = new RStatement(token, _tokensFlat);
-
-                // Edge case: if the last statement in the script ends with a new line, and there is
-                //     no comments or other text after it, then the statement will be empty. In this
-                //     case, don't add it to the list of statements.
-                if (clsStatement.Text.Length == 0) break;
-
-                statements.Add(clsStatement.StartPos, clsStatement);
+                RStatement statement = statements[i] as RStatement;
+                int startPosNew = (int)statement.StartPos + adjustment;
+                if (startPosNew < 0)
+                {
+                    throw new Exception("Start position of statement cannot be less than 0.");
+                }
+                statement.StartPos = (uint)startPosNew;
             }
-
-
         }
     }
 }

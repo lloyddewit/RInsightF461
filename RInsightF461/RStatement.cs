@@ -12,7 +12,7 @@ namespace RInsightF461
         public bool IsAssignment { get; }
 
         /// <summary> The position in the script where this statement starts. </summary>
-        public uint StartPos { get; }
+        public uint StartPos { get; internal set;}
 
         /// <summary>
         /// The text representation of this statement, including all formatting information (comments,
@@ -119,7 +119,7 @@ namespace RInsightF461
         /// <param name="strFunctionName"></param>
         /// <param name="parameterNumber"></param>
         /// <returns></returns>
-        public void SetToken(string functionName, int parameterNumber, string parameterValue, bool isQuoted = false)
+        internal int SetToken(string functionName, int parameterNumber, string parameterValue, bool isQuoted = false)
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
             RToken tokenParameterValue;
@@ -132,7 +132,20 @@ namespace RInsightF461
                 tokenParameterValue = GetTokenParameterOperator(tokenFunction, parameterNumber);
             }
 
-            tokenParameterValue.Lexeme.Text = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
+            parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
+            int adjustment = parameterValue.Length - tokenParameterValue.Lexeme.Text.Length;
+            tokenParameterValue.Lexeme.Text = parameterValue;
+
+            // update the script position of any subsequent tokens in statement
+            foreach (RToken token in _tokensFlat)
+            {
+                if (token.ScriptPos > tokenParameterValue.ScriptPos)
+                {
+                    token.ScriptPos += (uint)adjustment;
+                }
+            }
+
+            return adjustment;
         }
 
         /// <summary>

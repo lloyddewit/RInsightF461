@@ -56,7 +56,7 @@ namespace RInsightF461
         public RLexeme Lexeme;
 
         /// <summary> The position of the lexeme in the script from which the lexeme was extracted. </summary>
-        public uint ScriptPos { get; }
+        public uint ScriptPos { get; internal set; }
 
         /// <summary>
         /// The start position in the script of the statement associated with this token.
