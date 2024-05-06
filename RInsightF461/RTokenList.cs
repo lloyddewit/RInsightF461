@@ -194,21 +194,22 @@ namespace RInsightF461
 
             // while next token is the same operator (e.g. 'a+b+c+d...'), 
             // then keep making the next token, the child of the current operator token
-            while (posTokens < tokens.Count - 1)
-            {
-                tokenNext = GetNextToken(tokens, posTokens);
-                if (tokenType != tokenNext.TokenType || tokenText != tokenNext.Lexeme.Text)
-                {
-                    break;
-                }
-                posTokens++;
+            //todo
+            //while (posTokens < tokens.Count - 1)
+            //{
+            //    tokenNext = GetNextToken(tokens, posTokens);
+            //    if (tokenType != tokenNext.TokenType || tokenText != tokenNext.Lexeme.Text)
+            //    {
+            //        break;
+            //    }
+            //    posTokens++;
 
-                tokenNext = GetNextToken(tokens, posTokens);
-                childTokens.Add(tokenNext);
-                posTokens++;
-                //todo edge case: if next token was a keyword, then we may need to also add the keyword's associated condition and statement
-                childTokens.AddRange(GetKeyWordStatementChildren(tokens, ref posTokens));
-            }
+            //    tokenNext = GetNextToken(tokens, posTokens);
+            //    childTokens.Add(tokenNext);
+            //    posTokens++;
+            //    //todo edge case: if next token was a keyword, then we may need to also add the keyword's associated condition and statement
+            //    childTokens.AddRange(GetKeyWordStatementChildren(tokens, ref posTokens));
+            //}
             return childTokens;
         }
 
@@ -973,6 +974,7 @@ namespace RInsightF461
                             && (tokenFirstInStatement.Lexeme.Text.Contains("\r")
                                 || tokenFirstInStatement.Lexeme.Text.Contains("\n")))
                         {
+                            tokenFirstInStatement.SetAsEndStatement();
                             SetNewLineAsEndStatement(tokenFirstInStatement);
                         }
                     }
