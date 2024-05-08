@@ -12,23 +12,13 @@ namespace RInsightF461
     /// information needed to reconstruct the original script including all the whitespace, comments 
     /// and extra line breaks.
     /// For more details about R tokens and how they are structured, please see the documentation for 
-    /// the RToken class.<para>
-    /// 
-    /// todo: This class currently contains two lists - the flat list and the tree list. The flat list 
-    /// is lossless but the tree list loses some presentation information when it structures the tree 
-    /// for operators. For example, when it structures 'a+b +c + d' it does not store the presentation 
-    /// information (the spaces in this case) for the second and third '+' operators. Should we make 
-    /// the tree list lossless? We could then use the tree list to generate the flat list on demand.
-    /// </para></summary>
+    /// the RToken class.</summary>
     /// ------------------------------------------------------------------------------------------------
     public class RTokenList {
 
         /// <summary> List of tokens that represents the R script. 
         /// Each token is a tree representing a single R statement. </summary>
         public List<RToken> Tokens { get; private set; }
-
-        /// <summary> List of tokens that represents the R script </summary>
-        public List<RToken> TokensFlat { get; private set; }
 
         // Indexes to the _operatorPrecedences array for operators with special characteristics
         private static readonly int _operatorsUnaryOnly = 4;
@@ -79,8 +69,7 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         public RTokenList(string script) 
         {
-            TokensFlat = GetTokenList(script);
-            Tokens = GetTokenTreeList(TokensFlat);
+            Tokens = GetTokenTreeList(GetTokenList(script));
         }
 
         /// --------------------------------------------------------------------------------------------
@@ -908,34 +897,12 @@ namespace RInsightF461
 
         /// --------------------------------------------------------------------------------------------
         /// <summary>
-        /// Converts the newline <paramref name="token"/> to an end statement token in the flat list of 
-        /// tokens.
-        /// </summary>
-        /// <param name="token"> The newline token to convert.</param>
-        /// <returns>            The token converted to an end statement token.</returns>
-        /// <exception cref="Exception"></exception>
-        /// --------------------------------------------------------------------------------------------
-        private void SetNewLineAsEndStatement(RToken token)
-        {
-            var tokenFlat = TokensFlat.Find(
-                    item => item.ScriptPosStartStatement >= token.ScriptPosStartStatement
-                    && item.TokenType == RToken.TokenTypes.RNewLine);
-            if (tokenFlat == null)
-            {
-                throw new Exception("Could not find expected new line in flat token list.");
-            }
-            tokenFlat.SetAsEndStatement();
-        }
-
-        /// --------------------------------------------------------------------------------------------
-        /// <summary>
         /// Recursively traverses the <paramref name="tokens"/> tree. If a token is a '{' then it goes 
         /// through each statement in the '{' block and converts any newlines that separate statements 
         /// into end statements.
-        /// This function only changes the flat list of tokens. The token tree is not changed.
-        /// The flat list of tokens needs to know which newlines are end statements. This is because the 
-        /// flat list is used to create the R script without any presentation information, and it needs 
-        /// to know where to put the ';' separators.
+        /// We need to know which newlines are end statements because there is a requirement to recreate 
+        /// the R script without any presentation information. Therefore we need to know where to put 
+        /// the ';' separators.
         /// For example, the script below can be represented without any presentation information as 
         /// 'if(a){b;c}'.<code> 
         /// if(a)
@@ -975,7 +942,6 @@ namespace RInsightF461
                                 || tokenFirstInStatement.Lexeme.Text.Contains("\n")))
                         {
                             tokenFirstInStatement.SetAsEndStatement();
-                            SetNewLineAsEndStatement(tokenFirstInStatement);
                         }
                     }
                 }

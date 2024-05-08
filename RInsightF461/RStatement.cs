@@ -37,9 +37,6 @@ namespace RInsightF461
         /// token tree. </summary>
         /// 
         /// <param name="token">  The tree of R tokens to process </param>
-        /// <param name="tokensFlat"> A one-dimensional list of all the tokens in the script 
-        ///                           containing <paramref name="token"/> (useful for conveniently 
-        ///                           reconstructing the text representation of the statement).</param>
         /// --------------------------------------------------------------------------------------------
         public RStatement(RToken token)
         {
