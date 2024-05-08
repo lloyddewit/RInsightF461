@@ -21,7 +21,6 @@ namespace RInsightF461
         /// todo
         /// </summary>
         private List<RToken> _tokens;
-        private List<RToken> _tokensFlat;
 
         /// --------------------------------------------------------------------------------------------
         /// <summary>   Parses the R script in <paramref name="strInput"/> and populates the dictionary
@@ -50,11 +49,10 @@ namespace RInsightF461
 
             var tokenList = new RTokenList(strInput);
             _tokens = tokenList.Tokens;
-            _tokensFlat = tokenList.TokensFlat;
 
             foreach (RToken token in _tokens)
             {
-                var clsStatement = new RStatement(token, _tokensFlat);
+                var clsStatement = new RStatement(token);
 
                 // Edge case: if the last statement in the script ends with a new line, and there is
                 //     no comments or other text after it, then the statement will be empty. In this

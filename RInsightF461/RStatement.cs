@@ -41,7 +41,7 @@ namespace RInsightF461
         ///                           containing <paramref name="token"/> (useful for conveniently 
         ///                           reconstructing the text representation of the statement).</param>
         /// --------------------------------------------------------------------------------------------
-        public RStatement(RToken token, List<RToken> tokensFlat)
+        public RStatement(RToken token)
         {
             var assignments = new HashSet<string> { "->", "->>", "<-", "<<-", "=" };
             _token = token;
@@ -53,6 +53,7 @@ namespace RInsightF461
 
             //todo remove creation of Text
             uint endPos = _token.ScriptPosEndStatement;
+            List<RToken> tokensFlat = GetTokensFlat(_token);
             TextNoFormatting = GetTextNoFormatting(tokensFlat, StartPos, endPos);
 
             // create a lossless text representation of the statement including all presentation
@@ -107,7 +108,7 @@ namespace RInsightF461
                 text += tokenText;
                 tokenPrevIsEndStatement = tokenFlat.TokenType == RToken.TokenTypes.REndStatement;
             }
-            StartPos += (uint)startPosAdjustment;
+            //todo StartPos += (uint)startPosAdjustment;
         }
 
         /// <summary>
