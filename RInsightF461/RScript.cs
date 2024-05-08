@@ -17,11 +17,6 @@ namespace RInsightF461
         /// in the script. The dictionary value is the statement itself. </summary>
         public OrderedDictionary statements = new OrderedDictionary();
 
-        /// <summary>
-        /// todo
-        /// </summary>
-        private List<RToken> _tokens;
-
         /// --------------------------------------------------------------------------------------------
         /// <summary>   Parses the R script in <paramref name="strInput"/> and populates the dictionary
         ///             of R statements.
@@ -42,15 +37,8 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         public RScript(string strInput)
         {
-            if (string.IsNullOrEmpty(strInput))
-            {
-                return;
-            }
-
-            var tokenList = new RTokenList(strInput);
-            _tokens = tokenList.Tokens;
-
-            foreach (RToken token in _tokens)
+            List<RToken> tokens = new RTokenList(strInput).Tokens;
+            foreach (RToken token in tokens)
             {
                 var clsStatement = new RStatement(token);
 
