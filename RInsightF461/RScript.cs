@@ -41,12 +41,6 @@ namespace RInsightF461
             foreach (RToken token in tokens)
             {
                 var clsStatement = new RStatement(token);
-
-                // Edge case: if the last statement in the script ends with a new line, and there is
-                //     no comments or other text after it, then the statement will be empty. In this
-                //     case, don't add it to the list of statements.
-                //todo if (clsStatement.Text.Length == 0) break;
-            
                 statements.Add(clsStatement.StartPos, clsStatement);
             }
         }
@@ -90,6 +84,15 @@ namespace RInsightF461
             return strTxt;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="statementNumber"></param>
+        /// <param name="functionName"></param>
+        /// <param name="parameterNumber"></param>
+        /// <param name="parameterValue"></param>
+        /// <param name="isQuoted"></param>
+        /// <exception cref="Exception"></exception>
         public void SetToken(int statementNumber, string functionName, int parameterNumber, string parameterValue, bool isQuoted = false)
         {
             RStatement statementToUpdate = statements[statementNumber] as RStatement;
