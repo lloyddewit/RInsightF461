@@ -40,8 +40,8 @@ namespace RInsightF461
             List<RToken> tokens = new RTokenList(strInput).Tokens;
             foreach (RToken token in tokens)
             {
-                var clsStatement = new RStatement(token);
-                statements.Add(clsStatement.StartPos, clsStatement);
+                var statement = new RStatement(token);
+                statements.Add(statement.StartPos, statement);
             }
         }
 
@@ -103,6 +103,15 @@ namespace RInsightF461
                 RStatement statement = statements[i] as RStatement;
                 statement.AdjustStartPos(adjustment);
             }
+
+            //ensure that the dictionary keys are consistent with the new start positions
+            OrderedDictionary statementsNew = new OrderedDictionary();
+            foreach (System.Collections.DictionaryEntry entry in statements)
+            {
+                RStatement statement = entry.Value as RStatement;
+                statementsNew.Add(statement.StartPos, statement);
+            }
+            statements = statementsNew;
         }
     }
 }
