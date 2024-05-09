@@ -101,12 +101,7 @@ namespace RInsightF461
             for (int i = statementNumber + 1; i < statements.Count; i++)
             {
                 RStatement statement = statements[i] as RStatement;
-                int startPosNew = (int)statement.StartPos + adjustment;
-                if (startPosNew < 0)
-                {
-                    throw new Exception("Start position of statement cannot be less than 0.");
-                }
-                statement.StartPos = (uint)startPosNew;
+                statement.AdjustStartPos(adjustment);
             }
         }
     }

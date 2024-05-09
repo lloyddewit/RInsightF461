@@ -12,7 +12,7 @@ namespace RInsightF461
         public bool IsAssignment { get; }
 
         /// <summary> The position in the script where this statement starts. </summary>
-        public uint StartPos { get; internal set;}
+        public uint StartPos { get { return _token.ScriptPosStartStatement; } }
 
         /// <summary>
         /// The text representation of this statement, including all formatting information (comments,
@@ -45,8 +45,6 @@ namespace RInsightF461
 
             IsAssignment = _token.TokenType == RToken.TokenTypes.ROperatorBinary 
                            && assignments.Contains(_token.Lexeme.Text);
-
-            StartPos = _token.ScriptPosStartStatement;
 
             //todo remove creation of Text
             uint endPos = _token.ScriptPosEndStatement;
@@ -111,6 +109,23 @@ namespace RInsightF461
         /// <summary>
         /// todo
         /// </summary>
+        /// <param name="adjustment"></param>
+        /// <param name="scriptPosMin"></param>
+        internal void AdjustStartPos(int adjustment, uint scriptPosMin = 0)
+        {
+            List<RToken> tokensFlat = GetTokensFlat(_token);
+            foreach (RToken token in tokensFlat)
+            {
+                if (token.ScriptPos > scriptPosMin)
+                {
+                    token.ScriptPos = (uint)((int)token.ScriptPos + adjustment);
+                }
+            }
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
         /// <param name="strFunctionName"></param>
         /// <param name="parameterNumber"></param>
         /// <returns></returns>
@@ -132,15 +147,8 @@ namespace RInsightF461
             tokenParameterValue.Lexeme.Text = parameterValue;
 
             // update the script position of any subsequent tokens in statement
-            List<RToken> tokensFlat = GetTokensFlat(_token);
-            foreach (RToken token in tokensFlat)
-            {
-                if (token.ScriptPos > tokenParameterValue.ScriptPos)
-                {
-                    token.ScriptPos += (uint)adjustment;
-                }
-            }
-
+            AdjustStartPos(adjustment, tokenParameterValue.ScriptPos);
+            
             return adjustment;
         }
 
