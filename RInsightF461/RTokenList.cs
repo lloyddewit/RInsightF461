@@ -20,6 +20,9 @@ namespace RInsightF461
         /// Each token is a tree representing a single R statement. </summary>
         public List<RToken> Tokens { get; private set; }
 
+        /// <summary> List of tokens that represents the R script </summary>
+        public List<RToken> TokensFlat { get; private set; }
+
         // Indexes to the _operatorPrecedences array for operators with special characteristics
         private static readonly int _operatorsUnaryOnly = 4;
         private static readonly int _operatorsUserDefined = 6;
@@ -69,7 +72,8 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         public RTokenList(string script) 
         {
-            Tokens = GetTokenTreeList(GetTokenList(script));
+            TokensFlat = GetTokenList(script);
+            Tokens = GetTokenTreeList(TokensFlat);
         }
 
         /// --------------------------------------------------------------------------------------------
