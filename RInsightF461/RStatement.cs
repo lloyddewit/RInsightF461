@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace RInsightF461
 {
@@ -9,7 +8,7 @@ namespace RInsightF461
     public class RStatement
     {
         /// <summary> True if this statement is an assignment statement (e.g. x <- 1). </summary>
-        public bool IsAssignment { get; }
+        public bool IsAssignment { get => GetIsAssignment(); }
 
         /// <summary> The position in the script where this statement starts. </summary>
         public uint StartPos { get { return _token.ScriptPosStartStatement; } }
@@ -24,93 +23,36 @@ namespace RInsightF461
         /// The text representation of this statement, excluding all formatting information (comments,
         /// spaces, extra newlines etc.).
         /// </summary>
-        public string TextNoFormatting{ get; } //todo call private function
+        public string TextNoFormatting => GetTextNoFormatting();
 
         /// <summary>
-        /// todo
+        /// The statement is represented by a recursive tree of tokens. This is the root of the tree.
         /// </summary>
         private RToken _token;
         
-        /// --------------------------------------------------------------------------------------------
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// Constructs an object representing a valid R statement from the <paramref name="token"/> 
         /// token tree. </summary>
-        /// 
         /// <param name="token">  The tree of R tokens to process </param>
-        /// --------------------------------------------------------------------------------------------
-        public RStatement(RToken token)
-        {
-            var assignments = new HashSet<string> { "->", "->>", "<-", "<<-", "=" };
+        /// ----------------------------------------------------------------------------------------
+        internal RStatement(RToken token)
+        {            
             _token = token;
-
-            IsAssignment = _token.TokenType == RToken.TokenTypes.ROperatorBinary 
-                           && assignments.Contains(_token.Lexeme.Text);
-
-            //todo remove creation of Text
-            uint endPos = _token.ScriptPosEndStatement;
-            List<RToken> tokensFlat = GetTokensFlat(_token);
-            TextNoFormatting = GetTextNoFormatting(tokensFlat, StartPos, endPos);
-
-            // create a lossless text representation of the statement including all presentation
-            // information (e.g. spaces, newlines, comments etc.)
-            int startPosAdjustment = 0;
-            bool tokenPrevIsEndStatement = false;
-            bool firstNewLineFound = false;
-            string text = "";
-            foreach (RToken tokenFlat in tokensFlat)
-            {
-                if (tokenFlat.TokenType == RToken.TokenTypes.REmpty) continue;
-
-                uint tokenStartPos = tokenFlat.ScriptPosStartStatement;
-                if (tokenStartPos < StartPos)
-                {
-                    tokenPrevIsEndStatement = tokenFlat.TokenType == RToken.TokenTypes.REndStatement;
-                    continue;
-                }
-                string tokenText = tokenFlat.Lexeme.Text;
-                if (tokenStartPos >= endPos)
-                {
-                    // if next statement has presentation text that belongs with the current statement
-                    if (!tokenPrevIsEndStatement
-                        && tokenFlat.IsPresentation
-                        && tokenText.Length > 0)
-                    {
-                        text += tokenText;
-                        if (tokenFlat.Lexeme.IsNewLine)
-                        {
-                            break;
-                        }
-                        continue;
-                    }
-                    break;
-                }
-
-                // ignore any presentation characters that belong to the previous statement
-                if (text == ""
-                    && StartPos != 0
-                    && !tokenPrevIsEndStatement 
-                    && !firstNewLineFound
-                    && tokenFlat.IsPresentation
-                    && tokenText.Length > 0)
-                {
-                    if (tokenFlat.Lexeme.IsNewLine)
-                    {
-                        firstNewLineFound = true;
-                    }
-                    startPosAdjustment += tokenText.Length;
-                    tokenText = "";
-                }
-                text += tokenText;
-                tokenPrevIsEndStatement = tokenFlat.TokenType == RToken.TokenTypes.REndStatement;
-            }
-            //todo StartPos += (uint)startPosAdjustment;
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// For every token in the token tree, if the token's start position in the script is 
+        /// greater than <paramref name="scriptPosMin"/>, then adjust the start position by 
+        /// <paramref name="adjustment"/>.
         /// </summary>
-        /// <param name="adjustment"></param>
-        /// <param name="scriptPosMin"></param>
+        /// <param name="adjustment">   If positive, then increase the each token's start position 
+        ///     by this amount; if negative, then reduce each token's start position by this amount.
+        ///     </param>
+        /// <param name="scriptPosMin"> If the token's start position is less than or equal to this, 
+        ///     then do nothing</param>
+        /// ----------------------------------------------------------------------------------------
         internal void AdjustStartPos(int adjustment, uint scriptPosMin = 0)
         {
             List<RToken> tokensFlat = GetTokensFlat(_token);
@@ -123,13 +65,24 @@ namespace RInsightF461
             }
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
+        /// update is specified by <paramref name="functionName"/>, and <paramref name="parameterNumber"/>.
         /// </summary>
-        /// <param name="strFunctionName"></param>
-        /// <param name="parameterNumber"></param>
-        /// <returns></returns>
-        internal int SetToken(string functionName, int parameterNumber, string parameterValue, bool isQuoted = false)
+        /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>
+        /// <param name="parameterNumber"> The number of the parameter to update. For a function, 
+        ///     the first parameter is 0. For a binary operator the left hand parameter is 0 and the 
+        ///     right hand operator is 1. For a unary operator, the parameter number must be 0.</param>
+        /// <param name="parameterValue">  The token's new value</param>
+        /// <param name="isQuoted">        If True then put double quotes around 
+        ///     <paramref name="parameterValue"/></param>
+        /// <returns>                      The difference in length between the token's old value, 
+        ///     and the token's new value. A negative number indicates that the new value is shorter 
+        ///     than the new value.</returns>
+        /// ----------------------------------------------------------------------------------------
+        internal int SetToken(string functionName, int parameterNumber, string parameterValue, 
+                              bool isQuoted = false)
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
             RToken tokenParameterValue;
@@ -152,30 +105,25 @@ namespace RInsightF461
             return adjustment;
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// todo
         /// </summary>
-        /// <param name="token"></param>
         /// <returns></returns>
-        private List<RToken> GetTokensFlat(RToken token)
+        /// ----------------------------------------------------------------------------------------
+        private bool GetIsAssignment()
         {
-            var tokens = new List<RToken> { token };
-
-            foreach (RToken child in token.ChildTokens)
-            {
-                tokens.AddRange(GetTokensFlat(child));
-            }
-
-            tokens.Sort((a, b) => a.ScriptPos.CompareTo(b.ScriptPos));
-
-            return tokens;
+            var assignments = new HashSet<string> { "->", "->>", "<-", "<<-", "=" };
+            return _token.TokenType == RToken.TokenTypes.ROperatorBinary
+                                       && assignments.Contains(_token.Lexeme.Text);
         }
 
-
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// todo
         /// </summary>
         /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
         private string GetText()
         {
             // create a lossless text representation of the statement including all presentation
@@ -189,12 +137,49 @@ namespace RInsightF461
             return text;
         }
 
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Returns a text representation of the statement, excluding all formatting information 
+        /// (e.g. spaces, newlines, comments etc.).
+        /// </summary>
+        /// ----------------------------------------------------------------------------------------
+        private string GetTextNoFormatting()
+        {
+            string text = "";
+            List<RToken> tokensFlat = GetTokensFlat(_token);
+            foreach (RToken token in tokensFlat)
+            {
+                if (token.TokenType == RToken.TokenTypes.REmpty) continue;
+
+                if (token.TokenType == RToken.TokenTypes.REndStatement)
+                {
+                    text += ";";
+                }
+                else if (token.TokenType == RToken.TokenTypes.RKeyWord
+                         && (token.Lexeme.Text == "else"
+                             || token.Lexeme.Text == "in"
+                             || token.Lexeme.Text == "repeat"))
+                {
+                    text += " " + token.Lexeme.Text + " ";
+                }
+                else if (!token.IsPresentation) // ignore presentation tokens
+                {
+                    text += token.Lexeme.Text;
+                }
+            }
+            // remove final trailing `;` (only needed to separate internal compound statements)
+            text = text.Trim(';');
+            return text;
+        }
+
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// todo
         /// </summary>
         /// <param name="token"></param>
         /// <param name="functionName"></param>
         /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
         private RToken GetTokenFunction(RToken token, string functionName)
         {
             if ((token.TokenType == RToken.TokenTypes.RFunctionName 
@@ -216,12 +201,14 @@ namespace RInsightF461
             return null;
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// todo
         /// </summary>
         /// <param name="token"></param>
         /// <param name="iParameterNumber"></param>
         /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
         private RToken GetTokenParameterFunction(RToken token, int iParameterNumber)
         {
             int posFirstNonPresentationChild =
@@ -238,12 +225,14 @@ namespace RInsightF461
             return GetTokenParameterValue(tokenComma);
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// todo
         /// </summary>
         /// <param name="token"></param>
         /// <param name="iParameterNumber"></param>
         /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
         private RToken GetTokenParameterOperator(RToken token, int iParameterNumber)
         {
             int posFirstNonPresentationChild =
@@ -252,11 +241,13 @@ namespace RInsightF461
             return token.ChildTokens[posFirstNonPresentationChild + iParameterNumber];
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// todo
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
         private RToken GetTokenParameterValue(RToken token)
         {
             int posFirstNonPresentationChild = token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
@@ -271,48 +262,25 @@ namespace RInsightF461
             return tokenParameter;
         }
 
-        /// --------------------------------------------------------------------------------------------
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// Returns a text representation of the statement, excluding all formatting information 
-        /// (e.g. spaces, newlines, comments etc.).
+        /// todo
         /// </summary>
-        /// <param name="tokensFlat"> Flat list of all the tokens in the script</param>
-        /// <param name="posStart">   The start position of the statement in the script</param>
-        /// <param name="posEnd">     The end position of the statement in the script</param>
-        /// <returns>                 A text representation of the statement, excluding all formatting
-        ///                           information</returns>
-        /// --------------------------------------------------------------------------------------------
-        private string GetTextNoFormatting(List<RToken> tokensFlat, 
-                                           uint posStart, uint posEnd)
+        /// <param name="token"></param>
+        /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
+        private List<RToken> GetTokensFlat(RToken token)
         {
-            string text = "";
-            foreach (RToken token in tokensFlat)
+            var tokens = new List<RToken> { token };
+
+            foreach (RToken child in token.ChildTokens)
             {
-                if (token.TokenType == RToken.TokenTypes.REmpty) continue;
-
-                uint tokenStartPos = token.ScriptPosStartStatement;
-                if (tokenStartPos < posStart) continue;
-                if (tokenStartPos >= posEnd) break;
-
-                if (token.TokenType == RToken.TokenTypes.REndStatement)
-                {
-                    text += ";";
-                }
-                else if (token.TokenType == RToken.TokenTypes.RKeyWord
-                         && (token.Lexeme.Text == "else" 
-                             || token.Lexeme.Text == "in" 
-                             || token.Lexeme.Text == "repeat"))
-                {
-                    text += " " + token.Lexeme.Text + " ";
-                }
-                else if (!token.IsPresentation) // ignore presentation tokens
-                {
-                    text += token.Lexeme.Text;
-                }
+                tokens.AddRange(GetTokensFlat(child));
             }
-            // remove final trailing `;` (only needed to separate internal compound statements)
-            text = text.Trim(';');
-            return text;
+
+            tokens.Sort((a, b) => a.ScriptPos.CompareTo(b.ScriptPos));
+
+            return tokens;
         }
     }
 }

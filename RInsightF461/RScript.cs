@@ -17,9 +17,9 @@ namespace RInsightF461
         /// in the script. The dictionary value is the statement itself. </summary>
         public OrderedDictionary statements = new OrderedDictionary();
 
-        /// --------------------------------------------------------------------------------------------
-        /// <summary>   Parses the R script in <paramref name="strInput"/> and populates the dictionary
-        ///             of R statements.
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>   Parses the R script in <paramref name="strInput"/> and populates the 
+        ///             dictionary of R statements.
         ///             <para>
         ///             This subroutine will accept, and correctly process all valid R. However, this 
         ///             class does not attempt to validate <paramref name="strInput"/>. If it is not 
@@ -34,7 +34,7 @@ namespace RInsightF461
         ///                         R language specification at 
         ///                         https://cran.r-project.org/doc/manuals/r-release/R-lang.html 
         ///                         (referenced 01 Feb 2021).</param>
-        /// --------------------------------------------------------------------------------------------
+        /// ----------------------------------------------------------------------------------------
         public RScript(string strInput)
         {
             List<RToken> tokens = new RTokenList(strInput).Tokens;
@@ -45,14 +45,14 @@ namespace RInsightF461
             }
         }
 
-        /// --------------------------------------------------------------------------------------------
+        /// ----------------------------------------------------------------------------------------
         /// <summary>   Returns this object as a valid, executable R script. </summary>
         /// 
         /// <param name="bIncludeFormatting">   If True, then include all formatting information in 
         ///     returned string (comments, indents, padding spaces, extra line breaks etc.). </param>
         /// 
         /// <returns>   The current state of this object as a valid, executable R script. </returns>
-        /// --------------------------------------------------------------------------------------------
+        /// ----------------------------------------------------------------------------------------
         public string GetAsExecutableScript(bool bIncludeFormatting = true)
         {
             string strTxt = "";
@@ -84,29 +84,40 @@ namespace RInsightF461
             return strTxt;
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
+        /// update is specified by <paramref name="statementNumber"/>, 
+        /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>.
         /// </summary>
-        /// <param name="statementNumber"></param>
-        /// <param name="functionName"></param>
-        /// <param name="parameterNumber"></param>
-        /// <param name="parameterValue"></param>
-        /// <param name="isQuoted"></param>
-        /// <exception cref="Exception"></exception>
-        public void SetToken(int statementNumber, string functionName, int parameterNumber, string parameterValue, bool isQuoted = false)
+        /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
+        /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>
+        /// <param name="parameterNumber"> The number of the parameter to update. For a function, 
+        ///     the first parameter is 0. For a binary operator the left hand parameter is 0 and the 
+        ///     right hand operator is 1. For a unary operator, the parameter number must be 0.</param>
+        /// <param name="parameterValue">  The token's new value</param>
+        /// <param name="isQuoted">        If True then put double quotes around 
+        ///     <paramref name="parameterValue"/></param>
+        /// ----------------------------------------------------------------------------------------
+        public void SetToken(int statementNumber, string functionName, int parameterNumber, 
+                             string parameterValue, bool isQuoted = false)
         {
+            // update the token in the statement
             RStatement statementToUpdate = statements[statementNumber] as RStatement;
-            int adjustment = statementToUpdate.SetToken(functionName, parameterNumber, parameterValue, isQuoted);
+            int adjustment = statementToUpdate.SetToken(functionName, parameterNumber, 
+                                                        parameterValue, isQuoted);
 
+            // updating the the start positions of each statement that comes after the updated
+            // statement
             for (int i = statementNumber + 1; i < statements.Count; i++)
             {
                 RStatement statement = statements[i] as RStatement;
                 statement.AdjustStartPos(adjustment);
             }
 
-            //ensure that the dictionary keys are consistent with the new start positions
+            // ensure that the dictionary keys are consistent with the new start positions
             OrderedDictionary statementsNew = new OrderedDictionary();
-            foreach (System.Collections.DictionaryEntry entry in statements)
+            foreach (DictionaryEntry entry in statements)
             {
                 RStatement statement = entry.Value as RStatement;
                 statementsNew.Add(statement.StartPos, statement);
