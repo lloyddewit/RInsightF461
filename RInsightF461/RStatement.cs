@@ -7,10 +7,10 @@ namespace RInsightF461
     /// </summary>
     public class RStatement
     {
-        /// <summary> True if this statement is an assignment statement (e.g. x <- 1). </summary>
+        /// <summary> True if this statement is an assignment statement </summary>
         public bool IsAssignment { get => GetIsAssignment(); }
 
-        /// <summary> The position in the script where this statement starts. </summary>
+        /// <summary> The position in the script where this statement starts </summary>
         public uint StartPos { get { return _token.ScriptPosStartStatement; } }
 
         /// <summary>
@@ -107,9 +107,9 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// Return true if this statement is an assignment statement.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>True if this statement is an assignment statement.</returns>
         /// ----------------------------------------------------------------------------------------
         private bool GetIsAssignment()
         {
@@ -120,9 +120,11 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// Returns the text representation of this statement, including all formatting information 
+        /// (comments, spaces, extra newlines etc.).
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The text representation of this statement, including all formatting information 
+        /// (comments, spaces, extra newlines etc.).</returns>
         /// ----------------------------------------------------------------------------------------
         private string GetText()
         {
@@ -139,9 +141,11 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// Returns a text representation of the statement, excluding all formatting information 
-        /// (e.g. spaces, newlines, comments etc.).
+        /// Returns the text representation of this statement, excluding all formatting information 
+        /// (comments, spaces, extra newlines etc.).
         /// </summary>
+        /// <returns>The text representation of this statement, excluding all formatting information 
+        /// (comments, spaces, extra newlines etc.).</returns>
         /// ----------------------------------------------------------------------------------------
         private string GetTextNoFormatting()
         {
@@ -174,11 +178,15 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// Searches the token tree with root <paramref name="token"/> and returns the token 
+        /// representing a function called <paramref name="functionName"/>.
+        /// If the function token is not found, then returns null.
         /// </summary>
-        /// <param name="token"></param>
-        /// <param name="functionName"></param>
-        /// <returns></returns>
+        /// <param name="token">        The root of the function tree</param>
+        /// <param name="functionName"> The name of the function to search for</param>
+        /// <returns>                   The first token found that represents a function called 
+        ///                             <paramref name="functionName"/>. If the function token is 
+        ///                             not found, then returns null.</returns>
         /// ----------------------------------------------------------------------------------------
         private RToken GetTokenFunction(RToken token, string functionName)
         {
@@ -203,54 +211,45 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// Returns the token that represents the value of parameter number 
+        /// <paramref name="parameterNumber"/> in the function represented by <paramref name="token"/>.
         /// </summary>
-        /// <param name="token"></param>
-        /// <param name="iParameterNumber"></param>
-        /// <returns></returns>
+        /// <param name="token">           A token that represents a function</param>
+        /// <param name="parameterNumber"> The number of the parameter to update. The first 
+        ///                                parameter is 0. </param>
+        /// <returns>                      The token that represents the value of parameter number 
+        ///                                <paramref name="parameterNumber"/> in the function 
+        ///                                represented by <paramref name="token"/>.</returns>
         /// ----------------------------------------------------------------------------------------
-        private RToken GetTokenParameterFunction(RToken token, int iParameterNumber)
+        private RToken GetTokenParameterFunction(RToken token, int parameterNumber)
         {
             int posFirstNonPresentationChild =
                     token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
 
             RToken tokenBracket = token.ChildTokens[posFirstNonPresentationChild];
-
-            if (iParameterNumber == 0)
+            if (parameterNumber == 0)
             {
-                return GetTokenParameterValue(tokenBracket);
+                return GetTokenParameterFunctionValue(tokenBracket);
             }
 
-            RToken tokenComma = tokenBracket.ChildTokens[posFirstNonPresentationChild + iParameterNumber];
-            return GetTokenParameterValue(tokenComma);
+            RToken tokenComma = tokenBracket.ChildTokens[posFirstNonPresentationChild 
+                                                         + parameterNumber];
+            return GetTokenParameterFunctionValue(tokenComma);
         }
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// Returns the token that represents the value of the parameter specified by <paramref name="token"/>.
         /// </summary>
-        /// <param name="token"></param>
-        /// <param name="iParameterNumber"></param>
-        /// <returns></returns>
+        /// <param name="token"> A token that represents either a function opening bracket '(' or a 
+        ///                      comma that separates 2 function parameters.</param>
+        /// <returns>            The token that represents the value of the parameter specified by 
+        ///                      <paramref name="token"/>.</returns>
         /// ----------------------------------------------------------------------------------------
-        private RToken GetTokenParameterOperator(RToken token, int iParameterNumber)
+        private RToken GetTokenParameterFunctionValue(RToken token)
         {
-            int posFirstNonPresentationChild =
-                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
-
-            return token.ChildTokens[posFirstNonPresentationChild + iParameterNumber];
-        }
-
-        /// ----------------------------------------------------------------------------------------
-        /// <summary>
-        /// todo
-        /// </summary>
-        /// <param name="token"></param>
-        /// <returns></returns>
-        /// ----------------------------------------------------------------------------------------
-        private RToken GetTokenParameterValue(RToken token)
-        {
-            int posFirstNonPresentationChild = token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+            int posFirstNonPresentationChild = 
+                token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
 
             RToken tokenParameter = token.ChildTokens[posFirstNonPresentationChild];
             if (tokenParameter.TokenType == RToken.TokenTypes.ROperatorBinary && tokenParameter.Lexeme.Text == "=")
@@ -264,22 +263,44 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// Returns the token that represents the value of parameter number <paramref name="parameterNumber"/> 
+        /// in the operator represented by <paramref name="token"/>.
         /// </summary>
-        /// <param name="token"></param>
-        /// <returns></returns>
+        /// <param name="token">           A token that represents an operator</param>
+        /// <param name="parameterNumber"> The number of the parameter to return. 
+        ///     For a binary operator the left hand parameter is 0 and the right hand operator is 1. 
+        ///     For a unary operator, the parameter number must be 0. </param>
+        /// <returns>                      The token that represents the value of parameter number 
+        ///                                <paramref name="parameterNumber"/> in the operator 
+        ///                                represented by <paramref name="token"/>.</returns>
+        /// ----------------------------------------------------------------------------------------
+        private RToken GetTokenParameterOperator(RToken token, int parameterNumber)
+        {
+            int posFirstNonPresentationChild =
+                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+
+            return token.ChildTokens[posFirstNonPresentationChild + parameterNumber];
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Recursively traverses the token tree represented by <paramref name="token"/> and returns
+        /// <paramref name="token"/> and all its children as a flat list. The tokens in the list are 
+        /// ordered by their position in the script.
+        /// </summary>
+        /// <param name="token"> The root of the token tree</param>
+        /// <returns>            <paramref name="token"/> and all its children as a flat list. The 
+        ///                      tokens in the list are ordered by their position in the script.</returns>
         /// ----------------------------------------------------------------------------------------
         private List<RToken> GetTokensFlat(RToken token)
         {
             var tokens = new List<RToken> { token };
-
             foreach (RToken child in token.ChildTokens)
             {
                 tokens.AddRange(GetTokensFlat(child));
             }
 
             tokens.Sort((a, b) => a.ScriptPos.CompareTo(b.ScriptPos));
-
             return tokens;
         }
     }
