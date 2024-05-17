@@ -53,10 +53,10 @@ namespace RInsightF461
         public bool IsPresentation => GetIsPresentation();
 
         /// <summary> The lexeme associated with the token. </summary>
-        public RLexeme Lexeme { get; }
+        public RLexeme Lexeme;
 
         /// <summary> The position of the lexeme in the script from which the lexeme was extracted. </summary>
-        public uint ScriptPos { get; }
+        public uint ScriptPos { get; internal set; }
 
         /// <summary>
         /// The start position in the script of the statement associated with this token.
@@ -64,7 +64,7 @@ namespace RInsightF461
         public uint ScriptPosStartStatement => GetPosStartStatement();
 
         /// <summary>
-        /// The start position in the script of the statement associated with this token.
+        /// The end position in the script of the statement associated with this token.
         /// </summary>
         public uint ScriptPosEndStatement => GetPosEndStatement();
 
@@ -260,10 +260,10 @@ namespace RInsightF461
         /// --------------------------------------------------------------------------------------------
         /// <summary>
         /// Recursively searches the token tree (i.e. this token and its children) for the token with 
-        /// the latest end position in the script. If this token represents an R statement, then this
+        /// the greatest end position in the script. If this token represents an R statement, then this
         /// will be the end position of the statement.
         /// </summary>
-        /// <returns>The latest end position in the script of this token or its children.</returns>
+        /// <returns>The greatest end position in the script of this token or its children.</returns>
         /// --------------------------------------------------------------------------------------------
         private uint GetPosEndStatement()
         {

@@ -12,14 +12,7 @@ namespace RInsightF461
     /// information needed to reconstruct the original script including all the whitespace, comments 
     /// and extra line breaks.
     /// For more details about R tokens and how they are structured, please see the documentation for 
-    /// the RToken class.<para>
-    /// 
-    /// todo: This class currently contains two lists - the flat list and the tree list. The flat list 
-    /// is lossless but the tree list loses some presentation information when it structures the tree 
-    /// for operators. For example, when it structures 'a+b +c + d' it does not store the presentation 
-    /// information (the spaces in this case) for the second and third '+' operators. Should we make 
-    /// the tree list lossless? We could then use the tree list to generate the flat list on demand.
-    /// </para></summary>
+    /// the RToken class.</summary>
     /// ------------------------------------------------------------------------------------------------
     public class RTokenList {
 
@@ -158,10 +151,8 @@ namespace RInsightF461
         /// Processes the binary operator at position <paramref name="posTokens"/> in the 
         /// <paramref name="tokens"/> list.
         /// Each binary operator must have a left-hand operand (the token preceding the operator token 
-        /// in the <paramref name="tokens"/> list); and one or more right-hand operands (the token(s) 
-        /// following the operator token in the <paramref name="tokens"/> list).
-        /// An example of multiple right-hand operands is 'a+b+c+d'. 'b', 'c' and 'd' are all  
-        /// right-hand operands of the '+' operator.
+        /// in the <paramref name="tokens"/> list); and a right-hand operand (the token following the 
+        /// operator token in the <paramref name="tokens"/> list).
         /// </summary>
         /// <param name="tokens"></param>
         /// <param name="posTokens">  </param>
@@ -179,8 +170,6 @@ namespace RInsightF461
             }
 
             List<RToken> childTokens = new List<RToken>();
-            RToken.TokenTypes tokenType = tokens[posTokens].TokenType;
-            string tokenText = tokens[posTokens].Lexeme.Text ?? "";
 
             // make the previous token, a child of the current token
             childTokens.Add(tokenPrev.CloneMe());
@@ -189,26 +178,9 @@ namespace RInsightF461
             RToken tokenNext = GetNextToken(tokens, posTokens);
             childTokens.Add(tokenNext);
             posTokens++;
+
             //todo edge case: if next token was a keyword, then we may need to also add the keyword's associated condition and statement
             childTokens.AddRange(GetKeyWordStatementChildren(tokens, ref posTokens));
-
-            // while next token is the same operator (e.g. 'a+b+c+d...'), 
-            // then keep making the next token, the child of the current operator token
-            while (posTokens < tokens.Count - 1)
-            {
-                tokenNext = GetNextToken(tokens, posTokens);
-                if (tokenType != tokenNext.TokenType || tokenText != tokenNext.Lexeme.Text)
-                {
-                    break;
-                }
-                posTokens++;
-
-                tokenNext = GetNextToken(tokens, posTokens);
-                childTokens.Add(tokenNext);
-                posTokens++;
-                //todo edge case: if next token was a keyword, then we may need to also add the keyword's associated condition and statement
-                childTokens.AddRange(GetKeyWordStatementChildren(tokens, ref posTokens));
-            }
             return childTokens;
         }
 
@@ -907,34 +879,12 @@ namespace RInsightF461
 
         /// --------------------------------------------------------------------------------------------
         /// <summary>
-        /// Converts the newline <paramref name="token"/> to an end statement token in the flat list of 
-        /// tokens.
-        /// </summary>
-        /// <param name="token"> The newline token to convert.</param>
-        /// <returns>            The token converted to an end statement token.</returns>
-        /// <exception cref="Exception"></exception>
-        /// --------------------------------------------------------------------------------------------
-        private void SetNewLineAsEndStatement(RToken token)
-        {
-            var tokenFlat = TokensFlat.Find(
-                    item => item.ScriptPosStartStatement >= token.ScriptPosStartStatement
-                    && item.TokenType == RToken.TokenTypes.RNewLine);
-            if (tokenFlat == null)
-            {
-                throw new Exception("Could not find expected new line in flat token list.");
-            }
-            tokenFlat.SetAsEndStatement();
-        }
-
-        /// --------------------------------------------------------------------------------------------
-        /// <summary>
         /// Recursively traverses the <paramref name="tokens"/> tree. If a token is a '{' then it goes 
         /// through each statement in the '{' block and converts any newlines that separate statements 
         /// into end statements.
-        /// This function only changes the flat list of tokens. The token tree is not changed.
-        /// The flat list of tokens needs to know which newlines are end statements. This is because the 
-        /// flat list is used to create the R script without any presentation information, and it needs 
-        /// to know where to put the ';' separators.
+        /// We need to know which newlines are end statements because there is a requirement to recreate 
+        /// the R script without any presentation information. Therefore we need to know where to put 
+        /// the ';' separators.
         /// For example, the script below can be represented without any presentation information as 
         /// 'if(a){b;c}'.<code> 
         /// if(a)
@@ -966,14 +916,14 @@ namespace RInsightF461
                             continue;
                         }
 
-                        // If the ststement is preceded by a newline, then convert the newline to
+                        // If the statement is preceded by a newline, then convert the newline to
                         // an end statement
                         RToken tokenFirstInStatement = GetTokenWithLowestScriptPos(child);
                         if (tokenFirstInStatement.TokenType == RToken.TokenTypes.RPresentation
                             && (tokenFirstInStatement.Lexeme.Text.Contains("\r")
                                 || tokenFirstInStatement.Lexeme.Text.Contains("\n")))
                         {
-                            SetNewLineAsEndStatement(tokenFirstInStatement);
+                            tokenFirstInStatement.SetAsEndStatement();
                         }
                     }
                 }

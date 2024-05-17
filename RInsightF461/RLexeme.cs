@@ -14,9 +14,8 @@ namespace RInsightF461
     /// --------------------------------------------------------------------------------------------
     public class RLexeme
     {
-
         /// <summary> The text associated with the lexeme. </summary>
-        public string Text { get; }
+        public string Text {  get; internal set; }
 
         /// <summary> True if this lexeme is a round or curly bracket.</summary>
         public bool IsBracket => _IsBracket();
