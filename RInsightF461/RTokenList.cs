@@ -151,10 +151,8 @@ namespace RInsightF461
         /// Processes the binary operator at position <paramref name="posTokens"/> in the 
         /// <paramref name="tokens"/> list.
         /// Each binary operator must have a left-hand operand (the token preceding the operator token 
-        /// in the <paramref name="tokens"/> list); and one or more right-hand operands (the token(s) 
-        /// following the operator token in the <paramref name="tokens"/> list).
-        /// An example of multiple right-hand operands is 'a+b+c+d'. 'b', 'c' and 'd' are all  
-        /// right-hand operands of the '+' operator.
+        /// in the <paramref name="tokens"/> list); and a right-hand operand (the token following the 
+        /// operator token in the <paramref name="tokens"/> list).
         /// </summary>
         /// <param name="tokens"></param>
         /// <param name="posTokens">  </param>
@@ -172,8 +170,6 @@ namespace RInsightF461
             }
 
             List<RToken> childTokens = new List<RToken>();
-            RToken.TokenTypes tokenType = tokens[posTokens].TokenType;
-            string tokenText = tokens[posTokens].Lexeme.Text ?? "";
 
             // make the previous token, a child of the current token
             childTokens.Add(tokenPrev.CloneMe());
@@ -182,27 +178,9 @@ namespace RInsightF461
             RToken tokenNext = GetNextToken(tokens, posTokens);
             childTokens.Add(tokenNext);
             posTokens++;
+
             //todo edge case: if next token was a keyword, then we may need to also add the keyword's associated condition and statement
             childTokens.AddRange(GetKeyWordStatementChildren(tokens, ref posTokens));
-
-            // while next token is the same operator (e.g. 'a+b+c+d...'), 
-            // then keep making the next token, the child of the current operator token
-            //todo
-            //while (posTokens < tokens.Count - 1)
-            //{
-            //    tokenNext = GetNextToken(tokens, posTokens);
-            //    if (tokenType != tokenNext.TokenType || tokenText != tokenNext.Lexeme.Text)
-            //    {
-            //        break;
-            //    }
-            //    posTokens++;
-
-            //    tokenNext = GetNextToken(tokens, posTokens);
-            //    childTokens.Add(tokenNext);
-            //    posTokens++;
-            //    //todo edge case: if next token was a keyword, then we may need to also add the keyword's associated condition and statement
-            //    childTokens.AddRange(GetKeyWordStatementChildren(tokens, ref posTokens));
-            //}
             return childTokens;
         }
 
