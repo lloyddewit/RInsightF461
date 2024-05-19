@@ -17,7 +17,7 @@ namespace RInsightF461
         /// The text representation of this statement, including all formatting information (comments,
         /// spaces, extra newlines etc.).
         /// </summary>
-        public string Text => GetText();
+        public string Text => GetText(_token);
 
         /// <summary>
         /// The text representation of this statement, excluding all formatting information (comments,
@@ -43,9 +43,93 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="statementNumber"></param>
+        /// <param name="functionName"></param>
+        /// <param name="parameterName"></param>
+        /// <param name="parameterValue"></param>
+        /// <param name="isQuoted"></param>
+        /// ----------------------------------------------------------------------------------------
+        internal int AddParameterByName(string functionName, string parameterName,
+                                         string parameterValue, bool isQuoted = false)
+        {
+            RToken tokenFunction = GetTokenFunction(_token, functionName);
+            int posFirstNonPresentationChild = tokenFunction.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+            RToken tokenBracketOpen = tokenFunction.ChildTokens[posFirstNonPresentationChild];
+
+            parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
+            string parameterToAdd = $", {parameterName}={parameterValue}";
+            int adjustment = parameterToAdd.Length;
+            RTokenList tokenList = new RTokenList($"_function(_parameter0=0{parameterToAdd})");
+            RToken tokenParameter = tokenList.Tokens[0].ChildTokens[0].ChildTokens[1];
+            uint scriptPosCloseBracket = tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens.Count - 1].ScriptPos;
+
+            AdjustStartPos(adjustment  : (int)scriptPosCloseBracket - (int)tokenParameter.ScriptPos,
+                           scriptPosMin: 0,
+                           token       : tokenParameter);
+            AdjustStartPos(adjustment  : adjustment,
+                           scriptPosMin: scriptPosCloseBracket,
+                           token       : _token);
+
+            tokenBracketOpen.ChildTokens.Insert(tokenBracketOpen.ChildTokens.Count - 1, tokenParameter);
+
+            return adjustment;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// todo move to alphabetic location
+        /// </summary>
+        /// <param name="statementNumber"></param>
+        /// <param name="functionName"></param>
+        /// <param name="parameterName"></param>
+        /// ----------------------------------------------------------------------------------------
+        internal int RemoveParameterByName(string functionName, string parameterName)
+        {
+            int adjustment = 0;
+
+            RToken tokenFunction = GetTokenFunction(_token, functionName);
+            int posFirstNonPresentationChildFunction = tokenFunction.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+            RToken tokenBracketOpen = tokenFunction.ChildTokens[posFirstNonPresentationChildFunction];            
+
+            foreach (RToken token in tokenBracketOpen.ChildTokens)
+            {
+                if (token.TokenType != RToken.TokenTypes.RSeparator || token.Lexeme.Text != ",")
+                {
+                    continue;
+                }
+
+                int posFirstNonPresentationChildComma = token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+                RToken tokenParameterAssignment = token.ChildTokens[posFirstNonPresentationChildComma];
+                if (tokenParameterAssignment.TokenType != RToken.TokenTypes.ROperatorBinary || tokenParameterAssignment.Lexeme.Text != "=")
+                {
+                    continue;
+                }
+
+                int posFirstNonPresentationChildAssignment = tokenParameterAssignment.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+                RToken tokenParameterName = tokenParameterAssignment.ChildTokens[posFirstNonPresentationChildAssignment];
+                if (tokenParameterName.TokenType != RToken.TokenTypes.RSyntacticName || tokenParameterName.Lexeme.Text != parameterName)
+                {
+                    continue;
+                }
+
+                tokenBracketOpen.ChildTokens.Remove(token);
+                adjustment -= GetText(token).Length;
+                AdjustStartPos(adjustment  : adjustment,
+                               scriptPosMin: token.ScriptPos,
+                               token       : _token);
+                break;
+            }
+
+            return adjustment;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
         /// For every token in the token tree, if the token's start position in the script is 
-        /// greater than <paramref name="scriptPosMin"/>, then adjust the start position by 
-        /// <paramref name="adjustment"/>.
+        /// greater than or equal to <paramref name="scriptPosMin"/>, then adjust the start position 
+        /// by <paramref name="adjustment"/>.
         /// </summary>
         /// <param name="adjustment">   If positive, then increase the each token's start position 
         ///     by this amount; if negative, then reduce each token's start position by this amount.
@@ -53,14 +137,15 @@ namespace RInsightF461
         /// <param name="scriptPosMin"> If the token's start position is less than or equal to this, 
         ///     then do nothing</param>
         /// ----------------------------------------------------------------------------------------
-        internal void AdjustStartPos(int adjustment, uint scriptPosMin = 0)
+        internal void AdjustStartPos(int adjustment, uint scriptPosMin = 0, RToken token = null)
         {
-            List<RToken> tokensFlat = GetTokensFlat(_token);
-            foreach (RToken token in tokensFlat)
+            token = token ?? _token;
+            List<RToken> tokensFlat = GetTokensFlat(token);
+            foreach (RToken tokenFlat in tokensFlat)
             {
-                if (token.ScriptPos > scriptPosMin)
+                if (tokenFlat.ScriptPos >= scriptPosMin)
                 {
-                    token.ScriptPos = (uint)((int)token.ScriptPos + adjustment);
+                    tokenFlat.ScriptPos = (uint)((int)tokenFlat.ScriptPos + adjustment);
                 }
             }
         }
@@ -100,7 +185,7 @@ namespace RInsightF461
             tokenParameterValue.Lexeme.Text = parameterValue;
 
             // update the script position of any subsequent tokens in statement
-            AdjustStartPos(adjustment, tokenParameterValue.ScriptPos);
+            AdjustStartPos(adjustment, tokenParameterValue.ScriptPos + 1);
             
             return adjustment;
         }
@@ -126,12 +211,12 @@ namespace RInsightF461
         /// <returns>The text representation of this statement, including all formatting information 
         /// (comments, spaces, extra newlines etc.).</returns>
         /// ----------------------------------------------------------------------------------------
-        private string GetText()
+        private string GetText(RToken token)
         {
             // create a lossless text representation of the statement including all presentation
             // information (e.g. spaces, newlines, comments etc.)
             string text = "";
-            List<RToken> tokensFlat = GetTokensFlat(_token);
+            List<RToken> tokensFlat = GetTokensFlat(token);
             foreach (RToken tokenFlat in tokensFlat)
             {
                 text += tokenFlat.Lexeme.Text;

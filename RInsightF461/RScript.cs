@@ -46,6 +46,42 @@ namespace RInsightF461
         }
 
         /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="statementNumber"></param>
+        /// <param name="functionName"></param>
+        /// <param name="parameterName"></param>
+        /// <param name="parameterValue"></param>
+        /// <param name="isQuoted"></param>
+        /// ----------------------------------------------------------------------------------------
+        public void AddParameterByName(int statementNumber, string functionName, string parameterName,
+                                       string parameterValue, bool isQuoted = false)
+        {
+            RemoveParameterByName(statementNumber, functionName, parameterName);
+
+            RStatement statementToUpdate = statements[statementNumber] as RStatement;
+            int adjustment = statementToUpdate.AddParameterByName(functionName, parameterName,
+                                                                  parameterValue, isQuoted);
+            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// todo move to alphabetic location
+        /// </summary>
+        /// <param name="statementNumber"></param>
+        /// <param name="functionName"></param>
+        /// <param name="parameterName"></param>
+        /// ----------------------------------------------------------------------------------------
+        public void RemoveParameterByName(int statementNumber, string functionName, string parameterName)
+        {
+            RStatement statementToUpdate = statements[statementNumber] as RStatement;
+            int adjustment = statementToUpdate.RemoveParameterByName(functionName, parameterName);
+            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+        }
+
+        /// ----------------------------------------------------------------------------------------
         /// <summary>   Returns this object as a valid, executable R script. </summary>
         /// 
         /// <param name="bIncludeFormatting">   If True, then include all formatting information in 
@@ -102,14 +138,22 @@ namespace RInsightF461
         public void SetToken(int statementNumber, string functionName, int parameterNumber, 
                              string parameterValue, bool isQuoted = false)
         {
-            // update the token in the statement
             RStatement statementToUpdate = statements[statementNumber] as RStatement;
-            int adjustment = statementToUpdate.SetToken(functionName, parameterNumber, 
+            int adjustment = statementToUpdate.SetToken(functionName, parameterNumber,
                                                         parameterValue, isQuoted);
+            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+        }
 
-            // updating the the start positions of each statement that comes after the updated
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="statementNumber"></param>
+        /// <param name="adjustment"></param>
+        private void AdjustStatementsStartPos(int statementNumber, int adjustment)
+        {
+            // update the the start positions of each statement that comes after the updated
             // statement
-            for (int i = statementNumber + 1; i < statements.Count; i++)
+            for (int i = statementNumber; i < statements.Count; i++)
             {
                 RStatement statement = statements[i] as RStatement;
                 statement.AdjustStartPos(adjustment);
