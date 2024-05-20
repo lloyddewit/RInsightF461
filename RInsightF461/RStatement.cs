@@ -4,6 +4,8 @@ namespace RInsightF461
 {
     /// <summary>
     /// Represents a single valid R statement.
+    /// todo: a statement is essentially a single token. Remove this class and move the 
+    ///       functionality to the RToken class?
     /// </summary>
     public class RStatement
     {
@@ -17,7 +19,7 @@ namespace RInsightF461
         /// The text representation of this statement, including all formatting information (comments,
         /// spaces, extra newlines etc.).
         /// </summary>
-        public string Text => GetText();
+        public string Text => GetText(_token);
 
         /// <summary>
         /// The text representation of this statement, excluding all formatting information (comments,
@@ -43,26 +45,136 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// For every token in the token tree, if the token's start position in the script is 
-        /// greater than <paramref name="scriptPosMin"/>, then adjust the start position by 
-        /// <paramref name="adjustment"/>.
+        /// Adds the parameter named <paramref name="parameterName"/> to the function named 
+        /// <paramref name="functionName"/>. The value of the parameter is set to 
+        /// <paramref name="parameterValue"/>. If <paramref name="isQuoted"/> is true then encloses 
+        /// the parameter value in double quotes. Returns the difference between the function's text  
+        /// length before/after adding the parameter. If the function is not 
+        /// found, then throws an exception.<para>
+        /// Preconditions: The function must have at least 2 parameters; the function must not 
+        /// already have a <paramref name="parameterName"/> parameter.</para>
+        /// todo - remove need for preconditions?
+        /// </summary>
+        /// <param name="functionName">   The name of the function to add/update the parameter </param>
+        /// <param name="parameterName">  The name of the function parameter to add/update</param>
+        /// <param name="parameterValue"> The new value of the added/updated parameter</param>
+        /// <param name="isQuoted">       If true, then encloses the parameter value in double 
+        ///     quotes</param>
+        /// <returns> The difference between the function's text length before/after adding the 
+        ///     parameter. For example if parameter `c` with value 3 is added to `fn(a=1, b=2)`, 
+        ///     then the resulting function is `fn(a=1, b=2, c=3)` and 5 is returned 
+        ///     (the length of `, c=3`). </returns>
+        /// ----------------------------------------------------------------------------------------
+        internal int AddParameterByName(string functionName, string parameterName,
+                                         string parameterValue, bool isQuoted = false)
+        {
+            RToken tokenFunction = GetTokenFunction(_token, functionName);
+            if (tokenFunction is null)
+            {
+                throw new System.Exception("Function not found.");
+            }
+            RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
+
+            parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
+            string parameterToAdd = $", {parameterName}={parameterValue}";
+            int adjustment = parameterToAdd.Length;
+            RTokenList tokenList = new RTokenList($"_function(_parameter0=0{parameterToAdd})");
+            RToken tokenParameter = tokenList.Tokens[0].ChildTokens[0].ChildTokens[1];
+            uint scriptPosCloseBracket = 
+                    tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens.Count - 1].ScriptPos;
+
+            AdjustStartPos(adjustment  : (int)scriptPosCloseBracket - (int)tokenParameter.ScriptPos,
+                           scriptPosMin: 0,
+                           token       : tokenParameter);
+            AdjustStartPos(adjustment  : adjustment,
+                           scriptPosMin: scriptPosCloseBracket,
+                           token       : _token);
+
+            tokenBracketOpen.ChildTokens.Insert(tokenBracketOpen.ChildTokens.Count - 1, 
+                                                tokenParameter);
+            return adjustment;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// For every token in the <paramref name="token"/> token tree, if the token's start 
+        /// position in the script is greater than or equal to <paramref name="scriptPosMin"/>, 
+        /// then adjust the start position by <paramref name="adjustment"/>.
         /// </summary>
         /// <param name="adjustment">   If positive, then increase the each token's start position 
         ///     by this amount; if negative, then reduce each token's start position by this amount.
         ///     </param>
-        /// <param name="scriptPosMin"> If the token's start position is less than or equal to this, 
-        ///     then do nothing</param>
+        /// <param name="scriptPosMin"> If the token's start position is less than this, then do 
+        ///     nothing</param>
+        /// <param name="token">        The root of the token tree to traverse. If not specified or 
+        ///     null, then traverse the statement's root token</param>
         /// ----------------------------------------------------------------------------------------
-        internal void AdjustStartPos(int adjustment, uint scriptPosMin = 0)
+
+        internal void AdjustStartPos(int adjustment, uint scriptPosMin = 0, RToken token = null)
         {
-            List<RToken> tokensFlat = GetTokensFlat(_token);
-            foreach (RToken token in tokensFlat)
+            token = token ?? _token;
+            List<RToken> tokensFlat = GetTokensFlat(token);
+            foreach (RToken tokenFlat in tokensFlat)
             {
-                if (token.ScriptPos > scriptPosMin)
+                if (tokenFlat.ScriptPos >= scriptPosMin)
                 {
-                    token.ScriptPos = (uint)((int)token.ScriptPos + adjustment);
+                    tokenFlat.ScriptPos = (uint)((int)tokenFlat.ScriptPos + adjustment);
                 }
             }
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Removes the parameter named <paramref name="parameterName"/> from the function named 
+        /// <paramref name="functionName"/>. Returns the difference between the function's text  
+        /// length before/after removing the parameter. If the function or parameter is not found, 
+        /// then does nothing and returns 0.
+        /// </summary>
+        /// <param name="functionName">  The name of the function to remove the parameter from</param>
+        /// <param name="parameterName"> The name of the function parameter to remove</param>
+        /// <returns> The difference between the function's text length before/after removing the 
+        ///     parameter. This is always negative or zero. For example if parameter `b` is removed 
+        ///     from `fn(a=1, b=2)`, then the resulting function is `fn(a=b)` and -5 is returned 
+        ///     (the length of `, b=2`). </returns>
+        /// ----------------------------------------------------------------------------------------
+        internal int RemoveParameterByName(string functionName, string parameterName)
+        {
+            int adjustment = 0;
+
+            RToken tokenFunction = GetTokenFunction(_token, functionName);
+            RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
+
+            foreach (RToken token in tokenBracketOpen.ChildTokens)
+            {
+                if (token.TokenType != RToken.TokenTypes.RSeparator 
+                    || token.Lexeme.Text != ",")
+                {
+                    continue;
+                }
+
+                RToken tokenParameterAssignment = GetFirstNonPresentationChild(token);
+                if (tokenParameterAssignment.TokenType != RToken.TokenTypes.ROperatorBinary 
+                    || tokenParameterAssignment.Lexeme.Text != "=")
+                {
+                    continue;
+                }
+
+                RToken tokenParameterName = GetFirstNonPresentationChild(tokenParameterAssignment);
+                if (tokenParameterName.TokenType != RToken.TokenTypes.RSyntacticName 
+                    || tokenParameterName.Lexeme.Text != parameterName)
+                {
+                    continue;
+                }
+
+                tokenBracketOpen.ChildTokens.Remove(token);
+                adjustment -= GetText(token).Length;
+                AdjustStartPos(adjustment: adjustment,
+                               scriptPosMin: token.ScriptPos,
+                               token: _token);
+                break;
+            }
+
+            return adjustment;
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -100,9 +212,30 @@ namespace RInsightF461
             tokenParameterValue.Lexeme.Text = parameterValue;
 
             // update the script position of any subsequent tokens in statement
-            AdjustStartPos(adjustment, tokenParameterValue.ScriptPos);
+            AdjustStartPos(adjustment, tokenParameterValue.ScriptPos + 1);
             
             return adjustment;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Returns the first child of <paramref name="token"/> that is not a presentation token.
+        /// </summary>
+        /// <param name="token"> the token to search for a non-presentation child</param>
+        /// <returns> The first child of <paramref name="token"/> that is not a presentation token</returns>
+        /// ----------------------------------------------------------------------------------------
+        private static RToken GetFirstNonPresentationChild(RToken token)
+        {
+
+            if (token.ChildTokens is null
+                || token.ChildTokens.Count == 0
+                || (token.ChildTokens.Count == 1 && token.ChildTokens[0].IsPresentation))
+            {
+                throw new System.Exception("Token has no non-presentation children.");
+            }
+
+            int posFirstNonPresentationChild = token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+            return token.ChildTokens[posFirstNonPresentationChild];
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -120,18 +253,18 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// Returns the text representation of this statement, including all formatting information 
+        /// Returns the text representation of the statement (or part of the statement) represented 
+        /// by <paramref name="token"/>. The returned text includes all formatting information 
         /// (comments, spaces, extra newlines etc.).
         /// </summary>
+        /// <param name="token"> The token to convert to R script</param>
         /// <returns>The text representation of this statement, including all formatting information 
         /// (comments, spaces, extra newlines etc.).</returns>
         /// ----------------------------------------------------------------------------------------
-        private string GetText()
+        private string GetText(RToken token)
         {
-            // create a lossless text representation of the statement including all presentation
-            // information (e.g. spaces, newlines, comments etc.)
             string text = "";
-            List<RToken> tokensFlat = GetTokensFlat(_token);
+            List<RToken> tokensFlat = GetTokensFlat(token);
             foreach (RToken tokenFlat in tokensFlat)
             {
                 text += tokenFlat.Lexeme.Text;
