@@ -47,13 +47,17 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// Adds the parameter named <paramref name="parameterName"/> to the function named 
+        /// <paramref name="functionName"/> in statement <paramref name="statementNumber"/>. 
+        /// The value of the parameter is set to <paramref name="parameterValue"/>. 
+        /// If <paramref name="isQuoted"/> is true then encloses the parameter value in double quotes.
         /// </summary>
-        /// <param name="statementNumber"></param>
-        /// <param name="functionName"></param>
-        /// <param name="parameterName"></param>
-        /// <param name="parameterValue"></param>
-        /// <param name="isQuoted"></param>
+        /// <param name="statementNumber"> The number of the statement in the script to search for 
+        ///                                the function</param>
+        /// <param name="functionName">    The function to add the parameter to</param>
+        /// <param name="parameterName">   The name of the paramater to add</param>
+        /// <param name="parameterValue">  The value of the new parameter</param>
+        /// <param name="isQuoted">        If true then enclose the parameter value in double quotes</param>
         /// ----------------------------------------------------------------------------------------
         public void AddParameterByName(int statementNumber, string functionName, string parameterName,
                                        string parameterValue, bool isQuoted = false)
@@ -63,21 +67,6 @@ namespace RInsightF461
             RStatement statementToUpdate = statements[statementNumber] as RStatement;
             int adjustment = statementToUpdate.AddParameterByName(functionName, parameterName,
                                                                   parameterValue, isQuoted);
-            AdjustStatementsStartPos(statementNumber + 1, adjustment);
-        }
-
-        /// ----------------------------------------------------------------------------------------
-        /// <summary>
-        /// todo move to alphabetic location
-        /// </summary>
-        /// <param name="statementNumber"></param>
-        /// <param name="functionName"></param>
-        /// <param name="parameterName"></param>
-        /// ----------------------------------------------------------------------------------------
-        public void RemoveParameterByName(int statementNumber, string functionName, string parameterName)
-        {
-            RStatement statementToUpdate = statements[statementNumber] as RStatement;
-            int adjustment = statementToUpdate.RemoveParameterByName(functionName, parameterName);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
 
@@ -122,6 +111,25 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
+        /// Removes parameter <paramref name="parameterName"/> from the function 
+        /// <paramref name="functionName"/> in statement <paramref name="statementNumber"/>.
+        /// </summary>
+        /// <param name="statementNumber"> The number of the statement in the script to search for 
+        ///                                the function</param>
+        /// <param name="functionName">    The function to search for the parameter</param>
+        /// <param name="parameterName">   The paramater to remove</param>
+        /// ----------------------------------------------------------------------------------------
+        public void RemoveParameterByName(int statementNumber, 
+                                          string functionName, 
+                                          string parameterName)
+        {
+            RStatement statementToUpdate = statements[statementNumber] as RStatement;
+            int adjustment = statementToUpdate.RemoveParameterByName(functionName, parameterName);
+            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
         /// update is specified by <paramref name="statementNumber"/>, 
         /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>.
@@ -144,16 +152,23 @@ namespace RInsightF461
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
+        /// For each statement in the script, after and including <paramref name="startStatement"/>, 
+        /// adjusts the statement's start position by <paramref name="adjustment"/>. This function 
+        /// is used to update the start positions of statements after an earlier statement has been 
+        /// updated.
         /// </summary>
-        /// <param name="statementNumber"></param>
-        /// <param name="adjustment"></param>
-        private void AdjustStatementsStartPos(int statementNumber, int adjustment)
+        /// <param name="startStatement"> The number of the statement in the script to start 
+        /// adjusting the start positions. This is typically the statement immediately following 
+        /// the updated statement</param>
+        /// <param name="adjustment">     The amount to adjust the statements' start positions by</param>
+        /// ----------------------------------------------------------------------------------------
+        private void AdjustStatementsStartPos(int startStatement, int adjustment)
         {
             // update the the start positions of each statement that comes after the updated
             // statement
-            for (int i = statementNumber; i < statements.Count; i++)
+            for (int i = startStatement; i < statements.Count; i++)
             {
                 RStatement statement = statements[i] as RStatement;
                 statement.AdjustStartPos(adjustment);
