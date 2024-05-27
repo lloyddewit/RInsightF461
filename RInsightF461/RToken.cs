@@ -59,12 +59,14 @@ namespace RInsightF461
         public uint ScriptPos { get; internal set; }
 
         /// <summary>
-        /// The start position in the script of the statement associated with this token.
+        /// The earliest start position in the script of this token or its children. If this token 
+        /// represents an R statement, then this will be the start position of the statement.
         /// </summary>
         public uint ScriptPosStartStatement => GetPosStartStatement();
 
         /// <summary>
-        /// The end position in the script of the statement associated with this token.
+        /// The greatest end position in the script of this token or its children. If this token 
+        /// represents an R statement, then this will be the end position of the statement.
         /// </summary>
         public uint ScriptPosEndStatement => GetPosEndStatement();
 

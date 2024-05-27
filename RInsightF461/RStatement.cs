@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace RInsightF461
 {
@@ -51,14 +52,15 @@ namespace RInsightF461
         /// the parameter value in double quotes. Returns the difference between the function's text  
         /// length before/after adding the parameter. If the function is not 
         /// found, then throws an exception.<para>
-        /// Preconditions: The function must have at least 2 parameters; the function must not 
+        /// Preconditions: The function must have at least 1 parameter; the function must not 
         /// already have a <paramref name="parameterName"/> parameter.</para>
         /// todo - remove need for preconditions?
         /// </summary>
-        /// <param name="functionName">   The name of the function to add/update the parameter </param>
-        /// <param name="parameterName">  The name of the function parameter to add/update</param>
-        /// <param name="parameterValue"> The new value of the added/updated parameter</param>
-        /// <param name="isQuoted">       If true, then encloses the parameter value in double 
+        /// <param name="functionName">    The name of the function to add the parameter to</param>
+        /// <param name="parameterName">   The name of the function parameter to add</param>
+        /// <param name="parameterValue">  The new value of the added parameter</param>
+        /// <param name="parameterNumber"> The number of the existing parameter to add the new parameter in front of. If zero, then adds the parameter before any existing parameters. If greater than the number of existing parameters, then adds the parameter after the last existing parameter.</param>
+        /// <param name="isQuoted">        If true, then encloses the parameter value in double 
         ///     quotes</param>
         /// <returns> The difference between the function's text length before/after adding the 
         ///     parameter. For example if parameter `c` with value 3 is added to `fn(a=1, b=2)`, 
@@ -66,32 +68,67 @@ namespace RInsightF461
         ///     (the length of `, c=3`). </returns>
         /// ----------------------------------------------------------------------------------------
         internal int AddParameterByName(string functionName, string parameterName,
-                                         string parameterValue, bool isQuoted = false)
+                                        string parameterValue, uint parameterNumber, bool isQuoted)
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
             if (tokenFunction is null)
             {
                 throw new System.Exception("Function not found.");
             }
-            RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
 
+            // create token tree for new parameter
             parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
-            string parameterToAdd = $", {parameterName}={parameterValue}";
-            int adjustment = parameterToAdd.Length;
-            RTokenList tokenList = new RTokenList($"_function(_parameter0=0{parameterToAdd})");
-            RToken tokenParameter = tokenList.Tokens[0].ChildTokens[0].ChildTokens[1];
-            uint scriptPosCloseBracket = 
-                    tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens.Count - 1].ScriptPos;
+            string comma = ", ";
+            string parameterToAdd = (parameterNumber > 0 ? comma : "")
+                                    + $"{parameterName}={parameterValue}";
+            string dummyFunction = "fn(" 
+                                    + (parameterNumber > 0 ? "param1=0" : "")
+                                    + parameterToAdd + ")";
+            RTokenList tokenList = new RTokenList(dummyFunction);
+            RToken tokenParameter = tokenList.Tokens[0].ChildTokens[0].ChildTokens[(int)Math.Min(parameterNumber, 1)];
 
-            AdjustStartPos(adjustment  : (int)scriptPosCloseBracket - (int)tokenParameter.ScriptPos,
+            // find the new parameter's script position
+            RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
+            parameterNumber = Math.Min(parameterNumber, (uint)tokenBracketOpen.ChildTokens.Count - 1);
+            uint scriptPosInsertPos = 
+                    tokenBracketOpen.ChildTokens[(int)parameterNumber-1].ScriptPosStartStatement;
+
+            // set the correct script start position for the new parameter
+            AdjustStartPos(adjustment  : (int)scriptPosInsertPos - (int)tokenParameter.ScriptPosStartStatement,
                            scriptPosMin: 0,
                            token       : tokenParameter);
+
+            // if the new parameter is the new first parameter, then add a comma before the
+            // old first parameter (e.g. if we add 'paramNew=0' as first param to
+            // 'fn(paramOld=1)', then we get 'fn(paramNew=0, paramOld=1)'.
+            if (parameterNumber == 0) // todo check that we are not inserting into an empty parameter list
+            {
+                // create a token that is the same as param 0 but preceded by a comma
+                RToken tokenParam0 = GetFirstNonPresentationChild(tokenBracketOpen);
+                dummyFunction = "fn(a, " + GetText(tokenParam0) + ")";
+                tokenList = new RTokenList(dummyFunction);
+                RToken tokenDummyParam1 = tokenList.Tokens[0].ChildTokens[0].ChildTokens[1];
+                AdjustStartPos(adjustment  : (int)tokenParam0.ScriptPosStartStatement - (int)tokenDummyParam1.ScriptPosStartStatement,
+                                             scriptPosMin: 0,
+                                             token       : tokenDummyParam1);
+                // replace the old first param with the comma preceded version
+                tokenParam0 = tokenDummyParam1;
+
+                // adjust the start positions of all tokens that come after the new parameter to account for the comma that was added
+                AdjustStartPos(adjustment  : comma.Length,
+                               scriptPosMin: tokenDummyParam1.ScriptPosEndStatement,
+                               token       : _token);
+            }
+
+            // adjust the script start position for all tokens in the statement that come after the
+            // new parameter
+            int adjustment = parameterToAdd.Length;
             AdjustStartPos(adjustment  : adjustment,
-                           scriptPosMin: scriptPosCloseBracket,
+                           scriptPosMin: scriptPosInsertPos,
                            token       : _token);
 
-            tokenBracketOpen.ChildTokens.Insert(tokenBracketOpen.ChildTokens.Count - 1, 
-                                                tokenParameter);
+            // insert the new parameter into the function's token tree
+            tokenBracketOpen.ChildTokens.Insert((int)parameterNumber, tokenParameter);
             return adjustment;
         }
 
@@ -180,7 +217,7 @@ namespace RInsightF461
         /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
-        /// update is specified by <paramref name="functionName"/>, and <paramref name="parameterNumber"/>.
+        /// update is specified by <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. todo rename to SetParameterValue?
         /// </summary>
         /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>
         /// <param name="parameterNumber"> The number of the parameter to update. For a function, 
@@ -193,7 +230,7 @@ namespace RInsightF461
         ///     and the token's new value. A negative number indicates that the new value is shorter 
         ///     than the new value.</returns>
         /// ----------------------------------------------------------------------------------------
-        internal int SetToken(string functionName, int parameterNumber, string parameterValue, 
+        internal int SetToken(string functionName, uint parameterNumber, string parameterValue, 
                               bool isQuoted = false)
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
@@ -354,19 +391,19 @@ namespace RInsightF461
         ///                                <paramref name="parameterNumber"/> in the function 
         ///                                represented by <paramref name="token"/>.</returns>
         /// ----------------------------------------------------------------------------------------
-        private RToken GetTokenParameterFunction(RToken token, int parameterNumber)
+        private RToken GetTokenParameterFunction(RToken token, uint parameterNumber)
         {
-            int posFirstNonPresentationChild =
-                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+            uint posFirstNonPresentationChild =
+                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? (uint)1 : 0;
 
-            RToken tokenBracket = token.ChildTokens[posFirstNonPresentationChild];
+            RToken tokenBracket = token.ChildTokens[(int)posFirstNonPresentationChild];
             if (parameterNumber == 0)
             {
                 return GetTokenParameterFunctionValue(tokenBracket);
             }
 
-            RToken tokenComma = tokenBracket.ChildTokens[posFirstNonPresentationChild 
-                                                         + parameterNumber];
+            RToken tokenComma = tokenBracket.ChildTokens[(int)(posFirstNonPresentationChild 
+                                                               + parameterNumber)];
             return GetTokenParameterFunctionValue(tokenComma);
         }
 
@@ -407,12 +444,12 @@ namespace RInsightF461
         ///                                <paramref name="parameterNumber"/> in the operator 
         ///                                represented by <paramref name="token"/>.</returns>
         /// ----------------------------------------------------------------------------------------
-        private RToken GetTokenParameterOperator(RToken token, int parameterNumber)
+        private RToken GetTokenParameterOperator(RToken token, uint parameterNumber)
         {
-            int posFirstNonPresentationChild =
-                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+            uint posFirstNonPresentationChild =
+                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? (uint)1 : 0;
 
-            return token.ChildTokens[posFirstNonPresentationChild + parameterNumber];
+            return token.ChildTokens[(int)(posFirstNonPresentationChild + parameterNumber)];
         }
 
         /// ----------------------------------------------------------------------------------------

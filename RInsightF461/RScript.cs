@@ -57,16 +57,19 @@ namespace RInsightF461
         /// <param name="functionName">    The function to add the parameter to</param>
         /// <param name="parameterName">   The name of the paramater to add</param>
         /// <param name="parameterValue">  The value of the new parameter</param>
+        /// <param name="parameterNumber"> The number of the parameter to update. todo
         /// <param name="isQuoted">        If true then enclose the parameter value in double quotes</param>
         /// ----------------------------------------------------------------------------------------
-        public void AddParameterByName(int statementNumber, string functionName, string parameterName,
-                                       string parameterValue, bool isQuoted = false)
+        public void AddParameterByName(uint statementNumber, string functionName, string parameterName,
+                                       string parameterValue, uint parameterNumber = uint.MaxValue, 
+                                       bool isQuoted = false)
         {
             RemoveParameterByName(statementNumber, functionName, parameterName);
 
-            RStatement statementToUpdate = statements[statementNumber] as RStatement;
+            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.AddParameterByName(functionName, parameterName,
-                                                                  parameterValue, isQuoted);
+                                                                  parameterValue, parameterNumber, 
+                                                                  isQuoted);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
 
@@ -119,11 +122,11 @@ namespace RInsightF461
         /// <param name="functionName">    The function to search for the parameter</param>
         /// <param name="parameterName">   The paramater to remove</param>
         /// ----------------------------------------------------------------------------------------
-        public void RemoveParameterByName(int statementNumber, 
+        public void RemoveParameterByName(uint statementNumber, 
                                           string functionName, 
                                           string parameterName)
         {
-            RStatement statementToUpdate = statements[statementNumber] as RStatement;
+            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.RemoveParameterByName(functionName, parameterName);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
@@ -132,7 +135,7 @@ namespace RInsightF461
         /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
         /// update is specified by <paramref name="statementNumber"/>, 
-        /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>.
+        /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. todo rename to SetParameterValue?
         /// </summary>
         /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
         /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>
@@ -143,10 +146,10 @@ namespace RInsightF461
         /// <param name="isQuoted">        If True then put double quotes around 
         ///     <paramref name="parameterValue"/></param>
         /// ----------------------------------------------------------------------------------------
-        public void SetToken(int statementNumber, string functionName, int parameterNumber, 
+        public void SetToken(uint statementNumber, string functionName, uint parameterNumber, 
                              string parameterValue, bool isQuoted = false)
         {
-            RStatement statementToUpdate = statements[statementNumber] as RStatement;
+            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.SetToken(functionName, parameterNumber,
                                                         parameterValue, isQuoted);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
@@ -164,11 +167,11 @@ namespace RInsightF461
         /// the updated statement</param>
         /// <param name="adjustment">     The amount to adjust the statements' start positions by</param>
         /// ----------------------------------------------------------------------------------------
-        private void AdjustStatementsStartPos(int startStatement, int adjustment)
+        private void AdjustStatementsStartPos(uint startStatement, int adjustment)
         {
             // update the the start positions of each statement that comes after the updated
             // statement
-            for (int i = startStatement; i < statements.Count; i++)
+            for (int i = (int)startStatement; i < statements.Count; i++)
             {
                 RStatement statement = statements[i] as RStatement;
                 statement.AdjustStartPos(adjustment);
