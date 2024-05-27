@@ -89,9 +89,9 @@ namespace RInsightF461
 
             // find the new parameter's script position
             RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
-            parameterNumber = Math.Min(parameterNumber, (uint)tokenBracketOpen.ChildTokens.Count - 1);
+            parameterNumber = Math.Min(parameterNumber, (uint)tokenBracketOpen.ChildTokens.Count-1);
             uint scriptPosInsertPos = 
-                    tokenBracketOpen.ChildTokens[(int)parameterNumber-1].ScriptPosStartStatement;
+                    tokenBracketOpen.ChildTokens[(int)parameterNumber].ScriptPosStartStatement;
 
             // set the correct script start position for the new parameter
             AdjustStartPos(adjustment  : (int)scriptPosInsertPos - (int)tokenParameter.ScriptPosStartStatement,
@@ -112,7 +112,7 @@ namespace RInsightF461
                                              scriptPosMin: 0,
                                              token       : tokenDummyParam1);
                 // replace the old first param with the comma preceded version
-                tokenParam0 = tokenDummyParam1;
+                tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0] = tokenDummyParam1;
 
                 // adjust the start positions of all tokens that come after the new parameter to account for the comma that was added
                 AdjustStartPos(adjustment  : comma.Length,
@@ -181,18 +181,22 @@ namespace RInsightF461
             RToken tokenFunction = GetTokenFunction(_token, functionName);
             RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
 
+            bool isFirstParameter = true;
             foreach (RToken token in tokenBracketOpen.ChildTokens)
             {
-                if (token.TokenType != RToken.TokenTypes.RSeparator 
-                    || token.Lexeme.Text != ",")
+                if (token.IsPresentation) continue;
+
+                RToken tokenParameterAssignment = token;
+                if (token.TokenType == RToken.TokenTypes.RSeparator 
+                    && token.Lexeme.Text == ",")
                 {
-                    continue;
+                    tokenParameterAssignment = GetFirstNonPresentationChild(token);
                 }
 
-                RToken tokenParameterAssignment = GetFirstNonPresentationChild(token);
                 if (tokenParameterAssignment.TokenType != RToken.TokenTypes.ROperatorBinary 
                     || tokenParameterAssignment.Lexeme.Text != "=")
                 {
+                    isFirstParameter = false;
                     continue;
                 }
 
@@ -200,7 +204,29 @@ namespace RInsightF461
                 if (tokenParameterName.TokenType != RToken.TokenTypes.RSyntacticName 
                     || tokenParameterName.Lexeme.Text != parameterName)
                 {
+                    isFirstParameter = false;
                     continue;
+                }
+
+                // if we are moving the first parameter then we also need to remove the comma
+                // before the second parameter. E.g. `fn(a=1, b=2)` becomes `fn(b=2)`.
+                int numParams = tokenBracketOpen.ChildTokens.Count - 1;
+                numParams -= tokenBracketOpen.ChildTokens[0].IsPresentation ? 1 : 0;
+                if (isFirstParameter && numParams > 1)
+                {
+                    RToken tokenParam1 = tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1];
+                    RToken tokenParam1NoComma = tokenParam1.ChildTokens[tokenParam1.ChildTokens[0].IsPresentation ? 1 : 0];
+
+                    // remove any presentation tokens from the parameter
+                    RToken tokenParam1Name = GetFirstNonPresentationChild(tokenParam1NoComma);
+                    if (tokenParam1Name.ChildTokens.Count > 0 && tokenParam1Name.ChildTokens[0].IsPresentation)
+                    {
+                        tokenParam1Name.ChildTokens.Remove(tokenParam1Name.ChildTokens[0]);
+                        tokenParam1NoComma.ChildTokens[tokenParam1NoComma.ChildTokens[0].IsPresentation ? 1 : 0] = tokenParam1Name;
+                    }
+
+                    adjustment -= GetText(tokenParam1).Length - GetText(tokenParam1NoComma).Length;
+                    tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1] = tokenParam1NoComma;
                 }
 
                 tokenBracketOpen.ChildTokens.Remove(token);
@@ -208,6 +234,7 @@ namespace RInsightF461
                 AdjustStartPos(adjustment: adjustment,
                                scriptPosMin: token.ScriptPos,
                                token: _token);
+                isFirstParameter = false;
                 break;
             }
 
