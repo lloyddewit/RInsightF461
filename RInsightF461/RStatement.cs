@@ -77,19 +77,24 @@ namespace RInsightF461
             }
 
             // create token tree for new parameter
+            RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
             parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
-            string comma = ", ";
-            string parameterToAdd = (parameterNumber > 0 ? comma : "")
-                                    + $"{parameterName}={parameterValue}";
-            string dummyFunction = "fn(" 
-                                    + (parameterNumber > 0 ? "param1=0" : "")
-                                    + parameterToAdd + ")";
-            RTokenList tokenList = new RTokenList(dummyFunction);
-            RToken tokenParameter = tokenList.Tokens[0].ChildTokens[0].ChildTokens[(int)Math.Min(parameterNumber, 1)];
+            parameterNumber = Math.Min(parameterNumber, (uint)tokenBracketOpen.ChildTokens.Count - 1);
+            RToken tokenParameter;
+            if (parameterNumber == 0)
+            {
+                string dummyFunction = $"fn({parameterName}={parameterValue})";
+                RTokenList tokenList = new RTokenList(dummyFunction);
+                tokenParameter = tokenList.Tokens[0].ChildTokens[0].ChildTokens[0];
+            }
+            else
+            { 
+                string dummyFunction = $"fn(param1=0, {parameterName}={parameterValue})";
+                RTokenList tokenList = new RTokenList(dummyFunction);
+                tokenParameter = tokenList.Tokens[0].ChildTokens[0].ChildTokens[1];
+            }
 
             // find the new parameter's script position
-            RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
-            parameterNumber = Math.Min(parameterNumber, (uint)tokenBracketOpen.ChildTokens.Count-1);
             uint scriptPosInsertPos = 
                     tokenBracketOpen.ChildTokens[(int)parameterNumber].ScriptPosStartStatement;
 
@@ -98,31 +103,38 @@ namespace RInsightF461
                            scriptPosMin: 0,
                            token       : tokenParameter);
 
-            // if the new parameter is the new first parameter, then add a comma before the
-            // old first parameter (e.g. if we add 'paramNew=0' as first param to
-            // 'fn(paramOld=1)', then we get 'fn(paramNew=0, paramOld=1)'.
-            if (parameterNumber == 0) // todo check that we are not inserting into an empty parameter list
+            // if the new parameter is the new first parameter and the function already has at
+            // least one parameter, then add a comma before the old first parameter (e.g. if we
+            // add 'paramNew=0' as first param to 'fn(paramOld=1)', then we get
+            // 'fn(paramNew=0, paramOld=1)'.
+            int adjustment = 0;
+            bool functionHasParameters = 
+                    (tokenBracketOpen.ChildTokens.Count == 2
+                     && !tokenBracketOpen.ChildTokens[0].IsPresentation)
+                    || tokenBracketOpen.ChildTokens.Count > 2;
+            if (parameterNumber == 0 && functionHasParameters)
             {
                 // create a token that is the same as param 0 but preceded by a comma
                 RToken tokenParam0 = GetFirstNonPresentationChild(tokenBracketOpen);
-                dummyFunction = "fn(a, " + GetText(tokenParam0) + ")";
-                tokenList = new RTokenList(dummyFunction);
+                string dummyFunction = "fn(a, " + GetText(tokenParam0) + ")";
+                RTokenList tokenList = new RTokenList(dummyFunction);
                 RToken tokenDummyParam1 = tokenList.Tokens[0].ChildTokens[0].ChildTokens[1];
-                AdjustStartPos(adjustment  : (int)tokenParam0.ScriptPosStartStatement - (int)tokenDummyParam1.ScriptPosStartStatement,
+                AdjustStartPos(adjustment: (int)tokenParam0.ScriptPosStartStatement - (int)tokenDummyParam1.ScriptPosStartStatement,
                                              scriptPosMin: 0,
-                                             token       : tokenDummyParam1);
+                                             token: tokenDummyParam1);
                 // replace the old first param with the comma preceded version
                 tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0] = tokenDummyParam1;
 
                 // adjust the start positions of all tokens that come after the new parameter to account for the comma that was added
-                AdjustStartPos(adjustment  : comma.Length,
+                adjustment += 2; // length of ", "
+                AdjustStartPos(adjustment: adjustment,
                                scriptPosMin: tokenDummyParam1.ScriptPosEndStatement,
-                               token       : _token);
+                               token: _token);
             }
 
             // adjust the script start position for all tokens in the statement that come after the
             // new parameter
-            int adjustment = parameterToAdd.Length;
+            adjustment += GetText(tokenParameter).Length;
             AdjustStartPos(adjustment  : adjustment,
                            scriptPosMin: scriptPosInsertPos,
                            token       : _token);
@@ -177,7 +189,6 @@ namespace RInsightF461
         internal int RemoveParameterByName(string functionName, string parameterName)
         {
             int adjustment = 0;
-
             RToken tokenFunction = GetTokenFunction(_token, functionName);
             RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
 
@@ -208,31 +219,31 @@ namespace RInsightF461
                     continue;
                 }
 
-                // if we are moving the first parameter then we also need to remove the comma
+                // if we are removing the first parameter then we also need to remove the comma
                 // before the second parameter. E.g. `fn(a=1, b=2)` becomes `fn(b=2)`.
                 int numParams = tokenBracketOpen.ChildTokens.Count - 1;
                 numParams -= tokenBracketOpen.ChildTokens[0].IsPresentation ? 1 : 0;
                 if (isFirstParameter && numParams > 1)
                 {
-                    RToken tokenParam1 = tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1];
-                    RToken tokenParam1NoComma = tokenParam1.ChildTokens[tokenParam1.ChildTokens[0].IsPresentation ? 1 : 0];
+                    RToken tokenParam2 = tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1];
+                    RToken tokenParam2NoComma = tokenParam2.ChildTokens[tokenParam2.ChildTokens[0].IsPresentation ? 1 : 0];
 
                     // remove any presentation tokens from the parameter
-                    RToken tokenParam1Name = GetFirstNonPresentationChild(tokenParam1NoComma);
-                    if (tokenParam1Name.ChildTokens.Count > 0 && tokenParam1Name.ChildTokens[0].IsPresentation)
+                    // todo this assumes that the 2nd parameter is a named parameter. Handle case when 2nd parameter is not named (e.g. `fn(a=1, 2)`)
+                    RToken tokenParam2Name = GetFirstNonPresentationChild(tokenParam2NoComma);
+                    if (tokenParam2Name.ChildTokens.Count > 0 && tokenParam2Name.ChildTokens[0].IsPresentation)
                     {
-                        tokenParam1Name.ChildTokens.Remove(tokenParam1Name.ChildTokens[0]);
-                        tokenParam1NoComma.ChildTokens[tokenParam1NoComma.ChildTokens[0].IsPresentation ? 1 : 0] = tokenParam1Name;
+                        adjustment -= GetText(tokenParam2Name.ChildTokens[0]).Length; // because we removed the space(s)
+                        tokenParam2Name.ChildTokens.Remove(tokenParam2Name.ChildTokens[0]);
                     }
-
-                    adjustment -= GetText(tokenParam1).Length - GetText(tokenParam1NoComma).Length;
-                    tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1] = tokenParam1NoComma;
+                    tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1] = tokenParam2NoComma;
+                    adjustment--; // because we removed the comma
                 }
 
                 tokenBracketOpen.ChildTokens.Remove(token);
                 adjustment -= GetText(token).Length;
                 AdjustStartPos(adjustment: adjustment,
-                               scriptPosMin: token.ScriptPos,
+                               scriptPosMin: token.ScriptPosStartStatement,
                                token: _token);
                 isFirstParameter = false;
                 break;
