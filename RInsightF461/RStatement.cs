@@ -122,14 +122,15 @@ namespace RInsightF461
                 AdjustStartPos(adjustment: (int)tokenParam0.ScriptPosStartStatement - (int)tokenDummyParam1.ScriptPosStartStatement,
                                              scriptPosMin: 0,
                                              token: tokenDummyParam1);
-                // replace the old first param with the comma preceded version
-                tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0] = tokenDummyParam1;
 
                 // adjust the start positions of all tokens that come after the new parameter to account for the comma that was added
                 adjustment += 2; // length of ", "
                 AdjustStartPos(adjustment: adjustment,
-                               scriptPosMin: tokenDummyParam1.ScriptPosEndStatement,
+                               scriptPosMin: tokenParam0.ScriptPosEndStatement,
                                token: _token);
+
+                // replace the old first param with the comma preceded version
+                tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0] = tokenDummyParam1;
             }
 
             // adjust the script start position for all tokens in the statement that come after the
