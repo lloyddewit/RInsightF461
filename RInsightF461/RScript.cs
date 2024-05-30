@@ -57,7 +57,7 @@ namespace RInsightF461
         /// <param name="functionName">    The function to add the parameter to</param>
         /// <param name="parameterName">   The name of the paramater to add</param>
         /// <param name="parameterValue">  The value of the new parameter</param>
-        /// <param name="parameterNumber"> The number of the parameter to update. todo
+        /// <param name="parameterNumber"> The number of the parameter to update. todo 
         /// <param name="isQuoted">        If true then enclose the parameter value in double quotes</param>
         /// ----------------------------------------------------------------------------------------
         public void AddParameterByName(uint statementNumber, string functionName, string parameterName,
