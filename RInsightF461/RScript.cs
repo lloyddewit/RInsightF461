@@ -133,6 +133,23 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="statementNumber"></param>
+        /// <param name="functionName"></param>
+        /// <param name="parameterNumber"></param>
+        /// <param name="rScript"></param>
+        /// ----------------------------------------------------------------------------------------
+        public void ReplaceParameter(uint statementNumber,
+                                     string functionName,
+                                     uint parameterNumber,
+                                     RScript rScript)
+        {
+
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
         /// update is specified by <paramref name="statementNumber"/>, 
         /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. todo rename to SetParameterValue?
