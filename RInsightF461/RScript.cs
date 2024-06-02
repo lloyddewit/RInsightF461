@@ -138,14 +138,16 @@ namespace RInsightF461
         /// <param name="statementNumber"></param>
         /// <param name="functionName"></param>
         /// <param name="parameterNumber"></param>
-        /// <param name="rScript"></param>
+        /// <param name="parameterNew"></param>
         /// ----------------------------------------------------------------------------------------
         public void ReplaceParameter(uint statementNumber,
                                      string functionName,
                                      uint parameterNumber,
-                                     RScript rScript)
+                                     string parameterNew)
         {
-
+            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
+            int adjustment = statementToUpdate.ReplaceParameter(functionName, parameterNumber, parameterNew);
+            AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
 
         /// ----------------------------------------------------------------------------------------

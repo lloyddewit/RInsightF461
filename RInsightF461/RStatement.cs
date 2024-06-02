@@ -255,6 +255,64 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="operatorName"></param>
+        /// <param name="parameterNumber"></param>
+        /// <param name="parameterScript"></param>
+        /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
+        internal int ReplaceParameter(string operatorName,
+                                      uint parameterNumber,
+                                      string parameterScript)
+        {
+            //if parameterNumber is > 1 then throw exception
+            if (parameterNumber > 1)
+            {
+                throw new Exception("todo Parameter number must be 0 or 1.");
+            }
+
+            // find the first occurence of the operator in the statement
+            List<RToken> operators = GetTokensOperators(_token, operatorName);
+            if (operators.Count == 0)
+            {
+                throw new Exception("Operator not found.");
+            }
+            RToken tokenOperator = operators[0];
+
+            // find index of parameter to update
+            int indexFirstNonPresentationChild = tokenOperator.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
+            int indexParameterToReplace = indexFirstNonPresentationChild + (int)parameterNumber;
+
+            // create parameter token
+            RTokenList tokenList = new RTokenList(parameterScript);
+            RToken tokenParameter = tokenList.Tokens[0];
+            AdjustStartPos(adjustment: (int)tokenOperator.ChildTokens[indexParameterToReplace].ScriptPosStartStatement,
+                           scriptPosMin: 0,
+                           token: tokenParameter);
+
+            // if tokenParameter is not a binary operator then throw exception
+            if (tokenOperator.TokenType != RToken.TokenTypes.ROperatorBinary)
+            {
+                throw new Exception("todo Parameter must be a binary operator.");
+            }
+
+            // calculate adjustment
+            int adjustment = parameterScript.Length - GetText(tokenOperator.ChildTokens[indexParameterToReplace]).Length;
+
+            // adjust the script start position for all tokens in the statement that come after the replaced parameter
+            AdjustStartPos(adjustment: adjustment,
+                           scriptPosMin: tokenOperator.ChildTokens[indexParameterToReplace].ScriptPosEndStatement,
+                           token: _token);
+
+            // replace old parameter with new parameter
+            tokenOperator.ChildTokens[indexParameterToReplace] = tokenParameter;
+
+            return adjustment;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
         /// update is specified by <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. todo rename to SetParameterValue?
         /// </summary>
@@ -512,5 +570,33 @@ namespace RInsightF461
             tokens.Sort((a, b) => a.ScriptPos.CompareTo(b.ScriptPos));
             return tokens;
         }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="token"></param>
+        /// <param name="operatorText"></param>
+        /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
+        private List<RToken> GetTokensOperators(RToken token, string operatorText)
+        {
+            var tokens = new List<RToken>();
+
+            if (token.TokenType == RToken.TokenTypes.ROperatorBinary && token.Lexeme.Text == operatorText)
+            {
+                tokens.Add(token);
+            }
+
+            foreach (var child in token.ChildTokens)
+            {
+                tokens.AddRange(GetTokensOperators(child, operatorText));
+            }
+
+            tokens.Sort((x, y) => x.ScriptPos.CompareTo(y.ScriptPos));
+
+            return tokens;
+        }
+
     }
 }
