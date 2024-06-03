@@ -57,7 +57,7 @@ namespace RInsightF461
         /// <param name="functionName">    The function to add the parameter to</param>
         /// <param name="parameterName">   The name of the paramater to add</param>
         /// <param name="parameterValue">  The value of the new parameter</param>
-        /// <param name="parameterNumber"> The number of the parameter to update. todo 
+        /// <param name="parameterNumber"> The number of the parameter to update. 
         /// <param name="isQuoted">        If true then enclose the parameter value in double quotes</param>
         /// ----------------------------------------------------------------------------------------
         public void AddParameterByName(uint statementNumber, string functionName, string parameterName,
@@ -133,9 +133,34 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
+        /// Searches statement <paramref name="statementNumber"/> for the first occurence of 
+        /// <paramref name="operatorName"/> and then replaces  the operator's parameter 
+        /// <paramref name="parameterNumber"/> with <paramref name="parameterScript"/>. 
+        /// </summary>
+        /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
+        /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
+        /// <param name="parameterNumber"> Zero for the left hand parameter (e.g. `a` in `a+b`), 
+        ///                                1 for the right hand parameter (e.g. `b` in `a+b`)</param>
+        /// <param name="parameterScript"> The new parameter value</param>
+        /// ----------------------------------------------------------------------------------------
+        public void ReplaceParameterOperator(uint statementNumber,
+                                             string operatorName,
+                                             uint parameterNumber,
+                                             string parameterScript)
+        {
+            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
+            int adjustment = statementToUpdate.ReplaceParameterOperator(operatorName, 
+                                                                        parameterNumber,
+                                                                        parameterScript);
+            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
         /// update is specified by <paramref name="statementNumber"/>, 
-        /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. todo rename to SetParameterValue?
+        /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. 
+        /// todo rename to SetParameterValue?
         /// </summary>
         /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
         /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>

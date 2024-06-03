@@ -59,7 +59,10 @@ namespace RInsightF461
         /// <param name="functionName">    The name of the function to add the parameter to</param>
         /// <param name="parameterName">   The name of the function parameter to add</param>
         /// <param name="parameterValue">  The new value of the added parameter</param>
-        /// <param name="parameterNumber"> The number of the existing parameter to add the new parameter in front of. If zero, then adds the parameter before any existing parameters. If greater than the number of existing parameters, then adds the parameter after the last existing parameter.</param>
+        /// <param name="parameterNumber"> The number of the existing parameter to add the new 
+        ///     parameter in front of. If zero, then adds the parameter before any existing 
+        ///     parameters. If greater than the number of existing parameters, then adds the 
+        ///     parameter after the last existing parameter.</param>
         /// <param name="isQuoted">        If true, then encloses the parameter value in double 
         ///     quotes</param>
         /// <returns> The difference between the function's text length before/after adding the 
@@ -79,7 +82,8 @@ namespace RInsightF461
             // create token tree for new parameter
             RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
             parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
-            parameterNumber = Math.Min(parameterNumber, (uint)tokenBracketOpen.ChildTokens.Count - 1);
+            parameterNumber = Math.Min(parameterNumber, 
+                                       (uint)tokenBracketOpen.ChildTokens.Count - 1);
             RToken tokenParameter;
             if (parameterNumber == 0)
             {
@@ -99,7 +103,8 @@ namespace RInsightF461
                     tokenBracketOpen.ChildTokens[(int)parameterNumber].ScriptPosStartStatement;
 
             // set the correct script start position for the new parameter
-            AdjustStartPos(adjustment  : (int)scriptPosInsertPos - (int)tokenParameter.ScriptPosStartStatement,
+            AdjustStartPos(adjustment  : (int)scriptPosInsertPos - 
+                                         (int)tokenParameter.ScriptPosStartStatement,
                            scriptPosMin: 0,
                            token       : tokenParameter);
 
@@ -119,18 +124,21 @@ namespace RInsightF461
                 string dummyFunction = "fn(a, " + GetText(tokenParam0) + ")";
                 RTokenList tokenList = new RTokenList(dummyFunction);
                 RToken tokenDummyParam1 = tokenList.Tokens[0].ChildTokens[0].ChildTokens[1];
-                AdjustStartPos(adjustment: (int)tokenParam0.ScriptPosStartStatement - (int)tokenDummyParam1.ScriptPosStartStatement,
+                AdjustStartPos(adjustment: (int)tokenParam0.ScriptPosStartStatement - 
+                                           (int)tokenDummyParam1.ScriptPosStartStatement,
                                              scriptPosMin: 0,
                                              token: tokenDummyParam1);
 
-                // adjust the start positions of all tokens that come after the new parameter to account for the comma that was added
+                // adjust the start positions of all tokens that come after the new parameter
+                // to account for the comma that was added
                 adjustment += 2; // length of ", "
                 AdjustStartPos(adjustment: adjustment,
                                scriptPosMin: tokenParam0.ScriptPosEndStatement,
                                token: _token);
 
                 // replace the old first param with the comma preceded version
-                tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0] = tokenDummyParam1;
+                tokenBracketOpen.ChildTokens[GetIndexFirstNonPresentationChild(tokenBracketOpen)] 
+                        = tokenDummyParam1;
             }
 
             // adjust the script start position for all tokens in the statement that come after the
@@ -226,19 +234,26 @@ namespace RInsightF461
                 numParams -= tokenBracketOpen.ChildTokens[0].IsPresentation ? 1 : 0;
                 if (isFirstParameter && numParams > 1)
                 {
-                    RToken tokenParam2 = tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1];
-                    RToken tokenParam2NoComma = tokenParam2.ChildTokens[tokenParam2.ChildTokens[0].IsPresentation ? 1 : 0];
+                    RToken tokenParam2 = tokenBracketOpen.ChildTokens[
+                            tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1];
+                    RToken tokenParam2NoComma = tokenParam2.ChildTokens[
+                            tokenParam2.ChildTokens[0].IsPresentation ? 1 : 0];
 
                     // remove any presentation tokens from the parameter
-                    // todo this assumes that the 2nd parameter is a named parameter. Handle case when 2nd parameter is not named (e.g. `fn(a=1, 2)`)
+                    // todo This assumes that the 2nd parameter is a named parameter.
+                    //      Handle case when 2nd parameter is not named (e.g. `fn(a=1, 2)`)
                     RToken tokenParam2Name = GetFirstNonPresentationChild(tokenParam2NoComma);
-                    if (tokenParam2Name.ChildTokens.Count > 0 && tokenParam2Name.ChildTokens[0].IsPresentation)
+                    if (tokenParam2Name.ChildTokens.Count > 0 
+                        && tokenParam2Name.ChildTokens[0].IsPresentation)
                     {
-                        adjustment -= GetText(tokenParam2Name.ChildTokens[0]).Length; // because we removed the space(s)
+                        // adjust because we removed the space(s)
+                        adjustment -= GetText(tokenParam2Name.ChildTokens[0]).Length;
                         tokenParam2Name.ChildTokens.Remove(tokenParam2Name.ChildTokens[0]);
                     }
-                    tokenBracketOpen.ChildTokens[tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1] = tokenParam2NoComma;
-                    adjustment--; // because we removed the comma
+                    tokenBracketOpen.ChildTokens[
+                            tokenBracketOpen.ChildTokens[0].IsPresentation ? 2 : 1] 
+                            = tokenParam2NoComma;
+                    adjustment--; // adjust because we removed the comma
                 }
 
                 tokenBracketOpen.ChildTokens.Remove(token);
@@ -255,8 +270,78 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
+        /// Searches the statement for the first occurence of <paramref name="operatorName"/> and 
+        /// then replaces  the operator's parameter <paramref name="parameterNumber"/> with 
+        /// <paramref name="parameterScript"/>. Returns the difference in length between the old 
+        /// parameter and the new parameter. If the operator is not found, then throws an exception. 
+        /// If the parameter number is greater than 1, then throws an exception.
+        /// todo only parameters 0 and 1 are currently supported; only binary operators supported
+        /// </summary>
+        /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
+        /// <param name="parameterNumber"> Zero for the left hand parameter (e.g. `a` in `a+b`), 
+        ///                                1 for the right hand parameter (e.g. `b` in `a+b`)</param>
+        /// <param name="parameterScript"> The new parameter value</param>
+        /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
+        internal int ReplaceParameterOperator(string operatorName,
+                                              uint parameterNumber,
+                                              string parameterScript)
+        {
+            //if parameterNumber is > 1 then throw exception
+            if (parameterNumber > 1)
+            {
+                throw new Exception("Parameter number must be 0 or 1.");
+            }
+
+            // find the first occurence of the operator in the statement
+            List<RToken> operators = GetTokensOperators(_token, operatorName);
+            if (operators.Count == 0)
+            {
+                throw new Exception("Operator not found.");
+            }
+            RToken tokenOperator = operators[0];
+
+            // find index of the parameter to update
+            int indexParameterToReplace = GetIndexFirstNonPresentationChild(tokenOperator) 
+                                          + (int)parameterNumber;
+
+            // create the new parameter token
+            RTokenList tokenList = new RTokenList(parameterScript);
+            RToken tokenParameter = tokenList.Tokens[0];
+            AdjustStartPos(adjustment: (int)tokenOperator.ChildTokens[
+                                           indexParameterToReplace].ScriptPosStartStatement,
+                           scriptPosMin: 0,
+                           token: tokenParameter);
+
+            // if tokenParameter is not a binary operator then throw exception
+            if (tokenOperator.TokenType != RToken.TokenTypes.ROperatorBinary)
+            {
+                throw new Exception("Parameter must be a binary operator.");
+            }
+
+            // calculate adjustment for start positions of all tokens in the statement that come
+            // after the replaced parameter
+            int adjustment = parameterScript.Length 
+                             - GetText(tokenOperator.ChildTokens[indexParameterToReplace]).Length;
+
+            // adjust the script start position for all tokens in the statement that come after
+            // the replaced parameter
+            AdjustStartPos(adjustment: adjustment,
+                           scriptPosMin: tokenOperator.ChildTokens[
+                                             indexParameterToReplace].ScriptPosEndStatement,
+                           token: _token);
+
+            // replace old parameter with new parameter
+            tokenOperator.ChildTokens[indexParameterToReplace] = tokenParameter;
+
+            return adjustment;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
-        /// update is specified by <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. todo rename to SetParameterValue?
+        /// update is specified by <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. 
+        /// todo rename to SetParameterValue?
         /// </summary>
         /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>
         /// <param name="parameterNumber"> The number of the parameter to update. For a function, 
@@ -280,7 +365,9 @@ namespace RInsightF461
             }
             else
             {
-                tokenParameterValue = GetTokenParameterOperator(tokenFunction, parameterNumber);
+                tokenParameterValue = tokenFunction.ChildTokens[
+                                          GetIndexFirstNonPresentationChild(tokenFunction) 
+                                          + (int)parameterNumber];
             }
 
             parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
@@ -310,8 +397,21 @@ namespace RInsightF461
                 throw new System.Exception("Token has no non-presentation children.");
             }
 
-            int posFirstNonPresentationChild = token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
-            return token.ChildTokens[posFirstNonPresentationChild];
+            return token.ChildTokens[GetIndexFirstNonPresentationChild(token)];
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Returns the index of the first child of <paramref name="token"/> that is not a 
+        /// presentation token.
+        /// </summary>
+        /// <param name="token"> the token to search for a non-presentation child</param>
+        /// <returns> The index of the first child of <paramref name="token"/> that is not a 
+        ///           presentation token</returns>
+        /// ----------------------------------------------------------------------------------------
+        private static int GetIndexFirstNonPresentationChild(RToken token)
+        {
+            return token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -337,7 +437,7 @@ namespace RInsightF461
         /// <returns>The text representation of this statement, including all formatting information 
         /// (comments, spaces, extra newlines etc.).</returns>
         /// ----------------------------------------------------------------------------------------
-        private string GetText(RToken token)
+        private static string GetText(RToken token)
         {
             string text = "";
             List<RToken> tokensFlat = GetTokensFlat(token);
@@ -397,7 +497,7 @@ namespace RInsightF461
         ///                             <paramref name="functionName"/>. If the function token is 
         ///                             not found, then returns null.</returns>
         /// ----------------------------------------------------------------------------------------
-        private RToken GetTokenFunction(RToken token, string functionName)
+        private static RToken GetTokenFunction(RToken token, string functionName)
         {
             if ((token.TokenType == RToken.TokenTypes.RFunctionName 
                 || token.TokenType == RToken.TokenTypes.ROperatorBinary) 
@@ -430,19 +530,16 @@ namespace RInsightF461
         ///                                <paramref name="parameterNumber"/> in the function 
         ///                                represented by <paramref name="token"/>.</returns>
         /// ----------------------------------------------------------------------------------------
-        private RToken GetTokenParameterFunction(RToken token, uint parameterNumber)
+        private static RToken GetTokenParameterFunction(RToken token, uint parameterNumber)
         {
-            uint posFirstNonPresentationChild =
-                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? (uint)1 : 0;
-
-            RToken tokenBracket = token.ChildTokens[(int)posFirstNonPresentationChild];
+            RToken tokenBracket = GetFirstNonPresentationChild(token);
             if (parameterNumber == 0)
             {
                 return GetTokenParameterFunctionValue(tokenBracket);
             }
 
-            RToken tokenComma = tokenBracket.ChildTokens[(int)(posFirstNonPresentationChild 
-                                                               + parameterNumber)];
+            RToken tokenComma = tokenBracket.ChildTokens[GetIndexFirstNonPresentationChild(token)   
+                                                               + (int)parameterNumber];
             return GetTokenParameterFunctionValue(tokenComma);
         }
 
@@ -455,40 +552,16 @@ namespace RInsightF461
         /// <returns>            The token that represents the value of the parameter specified by 
         ///                      <paramref name="token"/>.</returns>
         /// ----------------------------------------------------------------------------------------
-        private RToken GetTokenParameterFunctionValue(RToken token)
+        private static RToken GetTokenParameterFunctionValue(RToken token)
         {
-            int posFirstNonPresentationChild = 
-                token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
-
-            RToken tokenParameter = token.ChildTokens[posFirstNonPresentationChild];
-            if (tokenParameter.TokenType == RToken.TokenTypes.ROperatorBinary && tokenParameter.Lexeme.Text == "=")
+            RToken tokenParameter = GetFirstNonPresentationChild(token);
+            if (tokenParameter.TokenType == RToken.TokenTypes.ROperatorBinary
+                && tokenParameter.Lexeme.Text == "=")
             {
-                posFirstNonPresentationChild = tokenParameter.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? 1 : 0;
-                int posParameterValue = posFirstNonPresentationChild + 1;
+                int posParameterValue = GetIndexFirstNonPresentationChild(tokenParameter) + 1;
                 return tokenParameter.ChildTokens[posParameterValue];
             }
             return tokenParameter;
-        }
-
-        /// ----------------------------------------------------------------------------------------
-        /// <summary>
-        /// Returns the token that represents the value of parameter number <paramref name="parameterNumber"/> 
-        /// in the operator represented by <paramref name="token"/>.
-        /// </summary>
-        /// <param name="token">           A token that represents an operator</param>
-        /// <param name="parameterNumber"> The number of the parameter to return. 
-        ///     For a binary operator the left hand parameter is 0 and the right hand operator is 1. 
-        ///     For a unary operator, the parameter number must be 0. </param>
-        /// <returns>                      The token that represents the value of parameter number 
-        ///                                <paramref name="parameterNumber"/> in the operator 
-        ///                                represented by <paramref name="token"/>.</returns>
-        /// ----------------------------------------------------------------------------------------
-        private RToken GetTokenParameterOperator(RToken token, uint parameterNumber)
-        {
-            uint posFirstNonPresentationChild =
-                    token.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation ? (uint)1 : 0;
-
-            return token.ChildTokens[(int)(posFirstNonPresentationChild + parameterNumber)];
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -501,7 +574,7 @@ namespace RInsightF461
         /// <returns>            <paramref name="token"/> and all its children as a flat list. The 
         ///                      tokens in the list are ordered by their position in the script.</returns>
         /// ----------------------------------------------------------------------------------------
-        private List<RToken> GetTokensFlat(RToken token)
+        private static List<RToken> GetTokensFlat(RToken token)
         {
             var tokens = new List<RToken> { token };
             foreach (RToken child in token.ChildTokens)
@@ -512,5 +585,36 @@ namespace RInsightF461
             tokens.Sort((a, b) => a.ScriptPos.CompareTo(b.ScriptPos));
             return tokens;
         }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Recursively searches for the binary operator <paramref name="operatorText"/> in the 
+        /// token tree represented by <paramref name="token"/> and returns a list of all the 
+        /// occurences found. The tokens in the list are ordered by their position in the script.
+        /// </summary>
+        /// <param name="token">        The root of the token tree</param>
+        /// <param name="operatorText"> The binary operator to search for (e.g. '+')</param>
+        /// <returns> A list of all the occurences found. The tokens in the list are ordered by 
+        ///           their position in the script.</returns>
+        /// ----------------------------------------------------------------------------------------
+        private static List<RToken> GetTokensOperators(RToken token, string operatorText)
+        {
+            var tokens = new List<RToken>();
+
+            if (token.TokenType == RToken.TokenTypes.ROperatorBinary 
+                && token.Lexeme.Text == operatorText)
+            {
+                tokens.Add(token);
+            }
+
+            foreach (var child in token.ChildTokens)
+            {
+                tokens.AddRange(GetTokensOperators(child, operatorText));
+            }
+
+            tokens.Sort((x, y) => x.ScriptPos.CompareTo(y.ScriptPos));
+            return tokens;
+        }
+
     }
 }
