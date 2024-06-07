@@ -499,8 +499,10 @@ namespace RInsightF461
         /// ----------------------------------------------------------------------------------------
         private static RToken GetTokenFunction(RToken token, string functionName)
         {
-            if ((token.TokenType == RToken.TokenTypes.RFunctionName 
-                || token.TokenType == RToken.TokenTypes.ROperatorBinary) 
+            if ((token.TokenType == RToken.TokenTypes.RFunctionName
+                || token.TokenType == RToken.TokenTypes.ROperatorBinary
+                || token.TokenType == RToken.TokenTypes.ROperatorUnaryLeft
+                || token.TokenType == RToken.TokenTypes.ROperatorUnaryRight)
                && token.Lexeme.Text == functionName)
             {
                 return token;
