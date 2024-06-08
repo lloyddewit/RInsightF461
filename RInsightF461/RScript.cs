@@ -60,16 +60,61 @@ namespace RInsightF461
         /// <param name="parameterNumber"> The number of the parameter to update. 
         /// <param name="isQuoted">        If true then enclose the parameter value in double quotes</param>
         /// ----------------------------------------------------------------------------------------
-        public void AddParameterByName(uint statementNumber, string functionName, string parameterName,
-                                       string parameterValue, uint parameterNumber = uint.MaxValue, 
-                                       bool isQuoted = false)
+        public void FunctionAddParamByName(uint statementNumber, string functionName, 
+                                           string parameterName, string parameterValue, 
+                                           uint parameterNumber = uint.MaxValue, 
+                                           bool isQuoted = false)
         {
-            RemoveParameterByName(statementNumber, functionName, parameterName);
+            FunctionRemoveParamByName(statementNumber, functionName, parameterName);
 
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
-            int adjustment = statementToUpdate.AddParameterByName(functionName, parameterName,
-                                                                  parameterValue, parameterNumber, 
-                                                                  isQuoted);
+            int adjustment = statementToUpdate.FunctionAddParamByName(
+                    functionName, parameterName, parameterValue, parameterNumber, isQuoted);
+            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Removes parameter <paramref name="parameterName"/> from the function 
+        /// <paramref name="functionName"/> in statement <paramref name="statementNumber"/>.
+        /// </summary>
+        /// <param name="statementNumber"> The number of the statement in the script to search for 
+        ///                                the function</param>
+        /// <param name="functionName">    The function to search for the parameter</param>
+        /// <param name="parameterName">   The paramater to remove</param>
+        /// ----------------------------------------------------------------------------------------
+        public void FunctionRemoveParamByName(uint statementNumber,
+                                                  string functionName,
+                                                  string parameterName)
+        {
+            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
+            int adjustment = statementToUpdate.FunctionRemoveParamByName(functionName, parameterName);
+            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
+        /// update is specified by <paramref name="statementNumber"/>, 
+        /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. 
+        /// todo update comment
+        /// </summary>
+        /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
+        /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>
+        /// <param name="parameterNumber"> The number of the parameter to update. For a function, 
+        ///     the first parameter is 0. For a binary operator the left hand parameter is 0 and the 
+        ///     right hand operator is 1. For a unary operator, the parameter number must be 0.</param>
+        /// <param name="parameterValue">  The token's new value</param>
+        /// <param name="isQuoted">        If True then put double quotes around 
+        ///     <paramref name="parameterValue"/></param>
+        /// ----------------------------------------------------------------------------------------
+        public void FunctionUpdateParamValue(uint statementNumber, string functionName,
+                                             uint parameterNumber, string parameterValue,
+                                             bool isQuoted = false)
+        {
+            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
+            int adjustment = statementToUpdate.FunctionUpdateParamValue(
+                    functionName, parameterNumber, parameterValue, isQuoted);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
 
@@ -114,25 +159,6 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// Removes parameter <paramref name="parameterName"/> from the function 
-        /// <paramref name="functionName"/> in statement <paramref name="statementNumber"/>.
-        /// </summary>
-        /// <param name="statementNumber"> The number of the statement in the script to search for 
-        ///                                the function</param>
-        /// <param name="functionName">    The function to search for the parameter</param>
-        /// <param name="parameterName">   The paramater to remove</param>
-        /// ----------------------------------------------------------------------------------------
-        public void RemoveParameterByName(uint statementNumber, 
-                                          string functionName, 
-                                          string parameterName)
-        {
-            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
-            int adjustment = statementToUpdate.RemoveParameterByName(functionName, parameterName);
-            AdjustStatementsStartPos(statementNumber + 1, adjustment);
-        }
-
-        /// ----------------------------------------------------------------------------------------
-        /// <summary>
         /// Searches statement <paramref name="statementNumber"/> for the first occurence of 
         /// <paramref name="operatorName"/> and then replaces  the operator's parameter 
         /// <paramref name="parameterNumber"/> with <paramref name="parameterScript"/>. 
@@ -143,40 +169,15 @@ namespace RInsightF461
         ///                                1 for the right hand parameter (e.g. `b` in `a+b`)</param>
         /// <param name="parameterScript"> The new parameter value</param>
         /// ----------------------------------------------------------------------------------------
-        public void ReplaceParameterOperator(uint statementNumber,
-                                             string operatorName,
-                                             uint parameterNumber,
-                                             string parameterScript)
+        public void OperatorUpdateParam(uint statementNumber,
+                                        string operatorName,
+                                        uint parameterNumber,
+                                        string parameterScript)
         {
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
-            int adjustment = statementToUpdate.ReplaceParameterOperator(operatorName, 
-                                                                        parameterNumber,
-                                                                        parameterScript);
-            AdjustStatementsStartPos(statementNumber + 1, adjustment);
-        }
-
-        /// ----------------------------------------------------------------------------------------
-        /// <summary>
-        /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
-        /// update is specified by <paramref name="statementNumber"/>, 
-        /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. 
-        /// todo rename to SetParameterValue?
-        /// </summary>
-        /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
-        /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>
-        /// <param name="parameterNumber"> The number of the parameter to update. For a function, 
-        ///     the first parameter is 0. For a binary operator the left hand parameter is 0 and the 
-        ///     right hand operator is 1. For a unary operator, the parameter number must be 0.</param>
-        /// <param name="parameterValue">  The token's new value</param>
-        /// <param name="isQuoted">        If True then put double quotes around 
-        ///     <paramref name="parameterValue"/></param>
-        /// ----------------------------------------------------------------------------------------
-        public void SetToken(uint statementNumber, string functionName, uint parameterNumber, 
-                             string parameterValue, bool isQuoted = false)
-        {
-            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
-            int adjustment = statementToUpdate.SetToken(functionName, parameterNumber,
-                                                        parameterValue, isQuoted);
+            int adjustment = statementToUpdate.OperatorUpdateParam(operatorName, 
+                                                                   parameterNumber,
+                                                                   parameterScript);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
 
