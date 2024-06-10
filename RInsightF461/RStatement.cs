@@ -334,9 +334,19 @@ namespace RInsightF461
             }
             RToken tokenOperator = operators[0];
 
-            // find index of the parameter to update
+            // find index of the parameter to replace
             int indexParameterToReplace = GetIndexFirstNonPresentationChild(tokenOperator) 
                                           + (int)parameterNumber;
+
+            // rescue any presentation info from the parameter to be replaced
+            if (tokenOperator.ChildTokens[indexParameterToReplace].ChildTokens.Count > 0 
+                    && GetIndexFirstNonPresentationChild(
+                            tokenOperator.ChildTokens[indexParameterToReplace]) != 0)
+            {
+                string presentation = 
+                        GetText(tokenOperator.ChildTokens[indexParameterToReplace].ChildTokens[0]);
+                parameterScript = presentation + parameterScript;
+            }
 
             // create the new parameter token
             RTokenList tokenList = new RTokenList(parameterScript);
