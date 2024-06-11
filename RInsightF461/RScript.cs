@@ -159,15 +159,41 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
+        /// Searches statement <paramref name="statementNumber"/> for <paramref name="operatorName"/> 
+        /// and then inserts <paramref name="parameterScript"/> just before parameter 
+        /// <paramref name="parameterNumber"/>. 
+        /// </summary>
+        /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
+        /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
+        /// <param name="parameterNumber"> The parameter number to insert the new parameter in 
+        ///     front of. If zero inserts in front of the first parameter (e.g. in front of `a` in 
+        ///     `a+b`). If greater than or equal to the number of parameters, then appends the new 
+        ///     parameter.</param>
+        /// <param name="parameterScript"> The new parameter</param>
+        /// ----------------------------------------------------------------------------------------
+        public void OperatorAddParam(uint statementNumber,
+                                     string operatorName,
+                                     uint parameterNumber,
+                                     string parameterScript)
+        {
+            RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
+            int adjustment = statementToUpdate.OperatorAddParam(operatorName,
+                                                                parameterNumber,
+                                                                parameterScript);
+            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
         /// Searches statement <paramref name="statementNumber"/> for the first occurence of 
-        /// <paramref name="operatorName"/> and then replaces  the operator's parameter 
+        /// <paramref name="operatorName"/> and then replaces the operator's parameter 
         /// <paramref name="parameterNumber"/> with <paramref name="parameterScript"/>. 
         /// </summary>
         /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
         /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
         /// <param name="parameterNumber"> Zero for the left hand parameter (e.g. `a` in `a+b`), 
         ///                                1 for the right hand parameter (e.g. `b` in `a+b`)</param>
-        /// <param name="parameterScript"> The new parameter value</param>
+        /// <param name="parameterScript"> The new parameter</param>
         /// ----------------------------------------------------------------------------------------
         public void OperatorUpdateParam(uint statementNumber,
                                         string operatorName,
@@ -175,7 +201,7 @@ namespace RInsightF461
                                         string parameterScript)
         {
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
-            int adjustment = statementToUpdate.OperatorUpdateParam(operatorName, 
+            int adjustment = statementToUpdate.OperatorUpdateParam(operatorName,
                                                                    parameterNumber,
                                                                    parameterScript);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
