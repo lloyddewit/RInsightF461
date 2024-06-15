@@ -388,7 +388,7 @@ namespace RInsightF461
                 throw new Exception("Operator not found.");
             }
             // find the parent of the last operator in the script
-            RToken tokenParent = operatorParents[operatorParents.Count - 1];
+            RToken tokenParent = operatorParents[0];
 
             // replace old operator with new operator
             for (int i = 0; i < tokenParent.ChildTokens.Count; i++)
@@ -457,10 +457,12 @@ namespace RInsightF461
                            scriptPosMin: 0,
                            token: tokenParameter);
 
-            // if tokenParameter is not a binary operator then throw exception
-            if (tokenOperator.TokenType != RToken.TokenTypes.ROperatorBinary)
+            // if tokenParameter is not a binary or unary operator then throw exception
+            if (tokenOperator.TokenType != RToken.TokenTypes.ROperatorBinary
+                && tokenOperator.TokenType != RToken.TokenTypes.ROperatorUnaryLeft
+                && tokenOperator.TokenType != RToken.TokenTypes.ROperatorUnaryRight)
             {
-                throw new Exception("Parameter must be a binary operator.");
+                throw new Exception("Parameter must be a binary or unary operator.");
             }
 
             // calculate adjustment for start positions of all tokens in the statement that come
@@ -704,7 +706,9 @@ namespace RInsightF461
         {
             var tokens = new List<RToken>();
 
-            if (token.TokenType == RToken.TokenTypes.ROperatorBinary
+            if ((token.TokenType == RToken.TokenTypes.ROperatorBinary
+                 || token.TokenType == RToken.TokenTypes.ROperatorUnaryLeft
+                 || token.TokenType == RToken.TokenTypes.ROperatorUnaryRight)
                 && token.Lexeme.Text == operatorText)
             {
                 tokens.Add(token);
