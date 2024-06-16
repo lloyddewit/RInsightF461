@@ -307,7 +307,8 @@ namespace RInsightF461
         /// <summary>
         /// Searches the statement for operator <paramref name="operatorName"/> and then inserts 
         /// <paramref name="parameterScript"/> just before (zero-based) occurence 
-        /// <paramref name="parameterNumber"/>. Returns the length of the new parameter. 
+        /// <paramref name="parameterNumber"/>. Returns the length of the script added to the 
+        /// statement. 
         /// If the operator is not found, then throws an exception. 
         /// todo only append parameter is currently supported; only binary operators supported
         /// </summary>
@@ -317,7 +318,7 @@ namespace RInsightF461
         ///     `a+b`). If greater than or equal to the number of parameters, then appends the new 
         ///     parameter.</param>
         /// <param name="parameterScript"> The length of the new parameter</param>
-        /// <returns></returns>
+        /// <returns>                      The length of the script added to the statement</returns>
         /// ----------------------------------------------------------------------------------------
         internal int OperatorAddParam(string operatorName, uint parameterNumber,
                                       string parameterScript)
@@ -725,17 +726,19 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo
         /// Recursively searches for the binary operator <paramref name="operatorText"/> in the 
-        /// token tree represented by <paramref name="token"/> and returns a list of all the 
-        /// occurences found. The tokens in the list are ordered by their position in the script.
+        /// token tree represented by <paramref name="tokenParent"/> and returns a list of all the 
+        /// parent tokens of the occurences found. The tokens in the list are ordered by their 
+        /// position in the script.
         /// </summary>
         /// <param name="token">        The root of the token tree</param>
         /// <param name="operatorText"> The binary operator to search for (e.g. '+')</param>
-        /// <returns> A list of all the occurences found. The tokens in the list are ordered by 
-        ///           their position in the script.</returns>
+        /// <returns> A list of all the parent tokens of the occurences found. The tokens in the 
+        ///           list are ordered by their position in the script.</returns>
         /// ----------------------------------------------------------------------------------------
-        private static List<RToken> GetTokensOperatorsParents(RToken tokenParent, RToken token, string operatorText)
+        private static List<RToken> GetTokensOperatorsParents(RToken tokenParent, 
+                                                              RToken token, 
+                                                              string operatorText)
         {
             var tokens = new List<RToken>();
 

@@ -84,8 +84,8 @@ namespace RInsightF461
         /// <param name="parameterName">   The paramater to remove</param>
         /// ----------------------------------------------------------------------------------------
         public void FunctionRemoveParamByName(uint statementNumber,
-                                                  string functionName,
-                                                  string parameterName)
+                                              string functionName,
+                                              string parameterName)
         {
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.FunctionRemoveParamByName(functionName, parameterName);
