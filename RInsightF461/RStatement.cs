@@ -310,7 +310,7 @@ namespace RInsightF461
         /// <paramref name="parameterNumber"/>. Returns the length of the script added to the 
         /// statement. 
         /// If the operator is not found, then throws an exception. 
-        /// todo only append parameter is currently supported; only binary operators supported
+        /// todo currently only binary operators supported
         /// </summary>
         /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
         /// <param name="parameterNumber"> The parameter number to insert the new parameter in 
@@ -325,15 +325,39 @@ namespace RInsightF461
         {
             RTokenList tokenList;
             RToken tokenOperatorNew;
-            string operatorAndParam = $" {operatorName} {parameterScript}";
+            string operatorAndParam = parameterNumber == 0? $"{parameterScript} {operatorName} " : 
+                                                            $" {operatorName} {parameterScript}";
             int adjustment = operatorAndParam.Length;
+
+            // find all occurences of the operator in the statement
+            List<RToken> operators = GetTokensOperators(_token, operatorName);
+            if (operators.Count == 0)
+            {
+                throw new Exception("Operator not found.");
+            }
 
             // Special case: if the statement's root token is the operator we are looking for
             if (_token.TokenType == RToken.TokenTypes.ROperatorBinary
                                && _token.Lexeme.Text == operatorName)
             {
                 // create the new parameter token
-                tokenList = new RTokenList(Text + operatorAndParam);
+                if (parameterNumber == 0)
+                {
+                    tokenList = new RTokenList(operatorAndParam + Text);
+                }
+                else if (parameterNumber >= operators.Count)
+                {
+                    tokenList = new RTokenList(Text + operatorAndParam);
+                }
+                else
+                {
+                    string operatorScript = Text.Substring(0, 
+                            (int)operators[(int)parameterNumber-1].ScriptPos) 
+                            + operatorAndParam 
+                            + Text.Substring((int)operators[(int)parameterNumber-1].ScriptPos);
+                    tokenList = new RTokenList(operatorScript);
+                }
+
                 // if list has more than one element then throw exception
                 if (tokenList.Tokens.Count != 1)
                 {
@@ -356,12 +380,6 @@ namespace RInsightF461
                 return adjustment;
             }
 
-            // find all occurences of the operator in the statement
-            List<RToken> operators = GetTokensOperators(_token, operatorName);
-            if (operators.Count == 0)
-            {
-                throw new Exception("Operator not found.");
-            }
             // find the last operator in the script
             RToken tokenOperator = operators[operators.Count - 1];
 
