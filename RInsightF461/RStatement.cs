@@ -351,10 +351,15 @@ namespace RInsightF461
                 }
                 else
                 {
-                    string operatorScript = Text.Substring(0, 
-                            (int)operators[(int)parameterNumber-1].ScriptPos) 
-                            + operatorAndParam 
-                            + Text.Substring((int)operators[(int)parameterNumber-1].ScriptPos);
+                    RToken tokenOperatorInsert = operators[(int)parameterNumber - 1];
+                    int insertPos;
+                    if (tokenOperatorInsert.ChildTokens.Count <= 0 
+                        || tokenOperatorInsert.ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
+                        insertPos = (int)tokenOperatorInsert.ScriptPos;
+                    else
+                        insertPos = (int)tokenOperatorInsert.ChildTokens[0].ScriptPos;
+
+                    string operatorScript = Text.Insert(insertPos, operatorAndParam);
                     tokenList = new RTokenList(operatorScript);
                 }
 
