@@ -404,7 +404,8 @@ namespace RInsightF461
                 else
                     insertPos = (int)tokenOperatorInsert.ChildTokens[0].ScriptPos;
             }
-            
+            insertPos -= (int)_token.ScriptPosStartStatement;
+
             // create new statement script that includes new operator parameter
             string statementScriptNew = Text.Insert(insertPos, operatorAndParam);
 
