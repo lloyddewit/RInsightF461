@@ -352,15 +352,15 @@ namespace RInsightF461
                 else
                 {
                     RToken tokenOperatorInsert = operators[(int)parameterNumber - 1];
-                    int insertPos;
-                    if (tokenOperatorInsert.ChildTokens.Count <= 0 
+                    int insertPos2;
+                    if (tokenOperatorInsert.ChildTokens.Count < 1
                         || tokenOperatorInsert.ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
-                        insertPos = (int)tokenOperatorInsert.ScriptPos;
+                        insertPos2 = (int)tokenOperatorInsert.ScriptPos;
                     else
-                        insertPos = (int)tokenOperatorInsert.ChildTokens[0].ScriptPos;
+                        insertPos2 = (int)tokenOperatorInsert.ChildTokens[0].ScriptPos;
 
-                    string operatorScript = Text.Insert(insertPos, operatorAndParam);
-                    tokenList = new RTokenList(operatorScript);
+                    string operatorScript2 = Text.Insert(insertPos2, operatorAndParam);
+                    tokenList = new RTokenList(operatorScript2);
                 }
 
                 // if list has more than one element then throw exception
@@ -385,46 +385,80 @@ namespace RInsightF461
                 return adjustment;
             }
 
-            // find the last operator in the script
-            RToken tokenOperator = operators[operators.Count - 1];
+            // find position in the statement to insert new operator param
+            int insertPos;
+            if (parameterNumber == 0)
+            {
+                insertPos = (int)operators[0].ScriptPosStartStatement;
+            }
+            else if (parameterNumber >= operators.Count)
+            {
+                insertPos = (int)operators[(int)operators.Count - 1].ScriptPosEndStatement;
+            }
+            else
+            {
+                RToken tokenOperatorInsert = operators[(int)parameterNumber - 1];
+                if (tokenOperatorInsert.ChildTokens.Count < 1
+                    || tokenOperatorInsert.ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
+                    insertPos = (int)tokenOperatorInsert.ScriptPos;
+                else
+                    insertPos = (int)tokenOperatorInsert.ChildTokens[0].ScriptPos;
+            }
+            
+            // create new statement script that includes new operator parameter
+            string statementScriptNew = Text.Insert(insertPos, operatorAndParam);
 
-            // create the new parameter token
-            tokenList = new RTokenList(GetText(tokenOperator) + operatorAndParam);
-            // if list has more than one element then throw exception
+            // make token tree for new statement
+            tokenList = new RTokenList(statementScriptNew);
             if (tokenList.Tokens.Count != 1)
             {
-                throw new Exception("token list must have only a single entry.");
+                throw new Exception("Token list must have only a single entry.");
             }
-            tokenOperatorNew = tokenList.Tokens[0];
-            AdjustStartPos(adjustment: (int)tokenOperator.ScriptPosStartStatement,
-                                       scriptPosMin: 0,
-                                       token: tokenOperatorNew);
+            RToken tokenStatementNew = tokenList.Tokens[0];
+            AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
+                           scriptPosMin: 0,
+                           token: tokenStatementNew);
+            _token = tokenStatementNew;
 
-            // adjust start positions of all tokens in the statement that come after the new parameter
-            AdjustStartPos(adjustment: adjustment,
-                           scriptPosMin: tokenOperatorNew.ScriptPosEndStatement,
-                           token: _token);
-
-            // find parent of all occurences of the operator in the statement
-            List<RToken> operatorParents = GetTokensOperatorsParents(null, _token, operatorName);
-            if (operatorParents.Count == 0)
-            {
-                throw new Exception("Operator not found.");
-            }
-            // find the parent of the last operator in the script
-            RToken tokenParent = operatorParents[0];
-
-            // replace old operator with new operator
-            for (int i = 0; i < tokenParent.ChildTokens.Count; i++)
-            {
-                if (tokenParent.ChildTokens[i] == tokenOperator)
-                {
-                    // insert the new parameter before the operator
-                    tokenParent.ChildTokens[i] = tokenOperatorNew;
-                    break;
-                }
-            }
             return adjustment;
+
+            //// create the new parameter token
+            //tokenList = new RTokenList(GetText(tokenOperator) + operatorAndParam);
+            //// if list has more than one element then throw exception
+            //if (tokenList.Tokens.Count != 1)
+            //{
+            //    throw new Exception("token list must have only a single entry.");
+            //}
+            //tokenOperatorNew = tokenList.Tokens[0];
+            //AdjustStartPos(adjustment: (int)tokenOperator.ScriptPosStartStatement,
+            //                           scriptPosMin: 0,
+            //                           token: tokenOperatorNew);
+
+            //// adjust start positions of all tokens in the statement that come after the new parameter
+            //AdjustStartPos(adjustment: adjustment,
+            //               scriptPosMin: tokenOperatorNew.ScriptPosEndStatement,
+            //               token: _token);
+
+            //// find parent of all occurences of the operator in the statement
+            //List<RToken> operatorParents = GetTokensOperatorsParents(null, _token, operatorName);
+            //if (operatorParents.Count == 0)
+            //{
+            //    throw new Exception("Operator not found.");
+            //}
+            //// find the parent of the last operator in the script
+            //RToken tokenParent = operatorParents[0];
+
+            //// replace old operator with new operator
+            //for (int i = 0; i < tokenParent.ChildTokens.Count; i++)
+            //{
+            //    if (tokenParent.ChildTokens[i] == tokenOperator)
+            //    {
+            //        // insert the new parameter before the operator
+            //        tokenParent.ChildTokens[i] = tokenOperatorNew;
+            //        break;
+            //    }
+            //}
+            //return adjustment;
         }
 
         /// ----------------------------------------------------------------------------------------
