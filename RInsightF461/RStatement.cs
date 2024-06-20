@@ -310,7 +310,7 @@ namespace RInsightF461
         /// <paramref name="parameterNumber"/>. Returns the length of the script added to the 
         /// statement. 
         /// If the operator is not found, then throws an exception. 
-        /// todo only append parameter is currently supported; only binary operators supported
+        /// todo currently only binary operators supported
         /// </summary>
         /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
         /// <param name="parameterNumber"> The parameter number to insert the new parameter in 
@@ -323,85 +323,52 @@ namespace RInsightF461
         internal int OperatorAddParam(string operatorName, uint parameterNumber,
                                       string parameterScript)
         {
-            RTokenList tokenList;
-            RToken tokenOperatorNew;
-            string operatorAndParam = $" {operatorName} {parameterScript}";
-            int adjustment = operatorAndParam.Length;
-
-            // Special case: if the statement's root token is the operator we are looking for
-            if (_token.TokenType == RToken.TokenTypes.ROperatorBinary
-                               && _token.Lexeme.Text == operatorName)
-            {
-                // create the new parameter token
-                tokenList = new RTokenList(Text + operatorAndParam);
-                // if list has more than one element then throw exception
-                if (tokenList.Tokens.Count != 1)
-                {
-                    throw new Exception("token list must have only a single entry.");
-                }
-                tokenOperatorNew = tokenList.Tokens[0];
-                AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
-                                           scriptPosMin: 0,
-                                           token: tokenOperatorNew);
-
-                // adjust the script start position for all tokens in the statement that come after
-                // the new parameter
-                AdjustStartPos(adjustment: adjustment,
-                               scriptPosMin: _token.ScriptPosEndStatement,
-                               token: _token);
-
-                // insert the new parameter into the statement
-                _token = tokenOperatorNew;
-
-                return adjustment;
-            }
-
             // find all occurences of the operator in the statement
             List<RToken> operators = GetTokensOperators(_token, operatorName);
             if (operators.Count == 0)
             {
                 throw new Exception("Operator not found.");
             }
-            // find the last operator in the script
-            RToken tokenOperator = operators[operators.Count - 1];
 
-            // create the new parameter token
-            tokenList = new RTokenList(GetText(tokenOperator) + operatorAndParam);
-            // if list has more than one element then throw exception
+            // find position in the statement to insert new operator param
+            int insertPos;
+            if (parameterNumber == 0)
+            {
+                insertPos = (int)operators[0].ScriptPosStartStatement;
+            }
+            else if (parameterNumber > operators.Count)
+            {
+                insertPos = (int)operators[(int)operators.Count - 1].ScriptPosEndStatement;
+            }
+            else
+            {
+                RToken tokenOperatorInsert = operators[(int)parameterNumber - 1];
+                if (tokenOperatorInsert.ChildTokens.Count < 1
+                    || tokenOperatorInsert.ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
+                    insertPos = (int)tokenOperatorInsert.ScriptPos;
+                else
+                    insertPos = (int)tokenOperatorInsert.ChildTokens[0].ScriptPos;
+            }
+            insertPos -= (int)_token.ScriptPosStartStatement;
+
+            // create new statement script that includes new operator parameter
+            string operatorAndParam = parameterNumber == 0 ? $"{parameterScript} {operatorName} " :
+                                                            $" {operatorName} {parameterScript}";
+            string statementScriptNew = Text.Insert(insertPos, operatorAndParam);
+
+            // make token tree for new statement
+            RTokenList tokenList = new RTokenList(statementScriptNew);
             if (tokenList.Tokens.Count != 1)
             {
-                throw new Exception("token list must have only a single entry.");
+                throw new Exception("Token list must have only a single entry.");
             }
-            tokenOperatorNew = tokenList.Tokens[0];
-            AdjustStartPos(adjustment: (int)tokenOperator.ScriptPosStartStatement,
-                                       scriptPosMin: 0,
-                                       token: tokenOperatorNew);
+            RToken tokenStatementNew = tokenList.Tokens[0];
+            AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
+                           scriptPosMin: 0,
+                           token: tokenStatementNew);
+            _token = tokenStatementNew;
 
-            // adjust start positions of all tokens in the statement that come after the new parameter
-            AdjustStartPos(adjustment: adjustment,
-                           scriptPosMin: tokenOperatorNew.ScriptPosEndStatement,
-                           token: _token);
-
-            // find parent of all occurences of the operator in the statement
-            List<RToken> operatorParents = GetTokensOperatorsParents(null, _token, operatorName);
-            if (operatorParents.Count == 0)
-            {
-                throw new Exception("Operator not found.");
-            }
-            // find the parent of the last operator in the script
-            RToken tokenParent = operatorParents[0];
-
-            // replace old operator with new operator
-            for (int i = 0; i < tokenParent.ChildTokens.Count; i++)
-            {
-                if (tokenParent.ChildTokens[i] == tokenOperator)
-                {
-                    // insert the new parameter before the operator
-                    tokenParent.ChildTokens[i] = tokenOperatorNew;
-                    break;
-                }
-            }
-            return adjustment;
+            return operatorAndParam.Length;
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -723,40 +690,5 @@ namespace RInsightF461
             tokens.Sort((x, y) => x.ScriptPos.CompareTo(y.ScriptPos));
             return tokens;
         }
-
-        /// ----------------------------------------------------------------------------------------
-        /// <summary>
-        /// Recursively searches for the binary operator <paramref name="operatorText"/> in the 
-        /// token tree represented by <paramref name="tokenParent"/> and returns a list of all the 
-        /// parent tokens of the occurences found. The tokens in the list are ordered by their 
-        /// position in the script.
-        /// </summary>
-        /// <param name="token">        The root of the token tree</param>
-        /// <param name="operatorText"> The binary operator to search for (e.g. '+')</param>
-        /// <returns> A list of all the parent tokens of the occurences found. The tokens in the 
-        ///           list are ordered by their position in the script.</returns>
-        /// ----------------------------------------------------------------------------------------
-        private static List<RToken> GetTokensOperatorsParents(RToken tokenParent, 
-                                                              RToken token, 
-                                                              string operatorText)
-        {
-            var tokens = new List<RToken>();
-
-            if (tokenParent != null
-                && token.TokenType == RToken.TokenTypes.ROperatorBinary
-                && token.Lexeme.Text == operatorText)
-            {
-                tokens.Add(tokenParent);
-            }
-
-            foreach (var child in token.ChildTokens)
-            {
-                tokens.AddRange(GetTokensOperatorsParents(token, child, operatorText));
-            }
-
-            tokens.Sort((x, y) => x.ScriptPos.CompareTo(y.ScriptPos));
-            return tokens;
-        }
-
     }
 }
