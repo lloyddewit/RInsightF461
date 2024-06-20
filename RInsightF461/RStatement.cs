@@ -407,6 +407,40 @@ namespace RInsightF461
             {
                 throw new Exception("Operator not found.");
             }
+
+            // find position in the statement to insert new operator param
+            int insertPos;
+            int paramToReplaceLength;
+            if (parameterNumber == 0)
+            {
+                RToken tokenOperatorToUpdate = operators[0];
+                insertPos = (int)tokenOperatorToUpdate.ScriptPosStartStatement;
+                if (tokenOperatorToUpdate.ChildTokens.Count < 1
+                    || tokenOperatorToUpdate.ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
+                    paramToReplaceLength = (int)tokenOperatorToUpdate.ScriptPos - insertPos;
+                else
+                    paramToReplaceLength = (int)tokenOperatorToUpdate.ChildTokens[0].ScriptPos - insertPos;
+            }
+            else if (parameterNumber > operators.Count) //todo continue from here
+            {
+                insertPos = (int)operators[(int)operators.Count - 1].ScriptPosEndStatement;
+                int paramToReplaceIndex = GetIndexFirstNonPresentationChild(operators[0]) + 1;
+                paramToReplaceLength = GetText(operators[(int)operators.Count - 1].ChildTokens[paramToReplaceIndex]).Length;
+            }
+            else
+            {
+                RToken tokenOperatorToUpdate = operators[(int)parameterNumber - 1];
+                if (tokenOperatorToUpdate.ChildTokens.Count < 1
+                    || tokenOperatorToUpdate.ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
+                    insertPos = (int)tokenOperatorToUpdate.ScriptPos;
+                else
+                    insertPos = (int)tokenOperatorToUpdate.ChildTokens[0].ScriptPos;
+            }
+            insertPos -= (int)_token.ScriptPosStartStatement;
+
+
+
+
             RToken tokenOperator = operators[0];
 
             // find index of the parameter to replace
