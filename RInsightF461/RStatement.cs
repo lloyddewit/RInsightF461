@@ -309,7 +309,12 @@ namespace RInsightF461
         /// <paramref name="parameterScript"/> just before (zero-based) occurence 
         /// <paramref name="parameterNumber"/>. Returns the length of the script added to the 
         /// statement. 
-        /// If the operator is not found, then throws an exception. 
+        /// If the operator is not found, then throws an exception. <para>
+        /// Special case: If the new parameter is appended to the end of the statement, and 
+        /// <paramref name="parameterScript"/> has presentation information appended to it 
+        /// (e.g. spaces, newlines, comments etc.), then this presentation information is discarded. 
+        /// This is because in the script's token tree, this presentation information should be 
+        /// part of the next statement.</para>
         /// todo currently only binary operators supported
         /// </summary>
         /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
@@ -354,13 +359,20 @@ namespace RInsightF461
             // create new statement script that includes new operator parameter
             string operatorAndParam = parameterNumber == 0 ? $"{parameterScript} {operatorName} " :
                                                             $" {operatorName} {parameterScript}";
+            int adjustment = operatorAndParam.Length;
             string statementScriptNew = Text.Insert(insertPos, operatorAndParam);
 
             // make token tree for new statement
             RTokenList tokenList = new RTokenList(statementScriptNew);
             if (tokenList.Tokens.Count != 1)
             {
-                throw new Exception("Token list must have only a single entry.");
+                if (tokenList.Tokens.Count == 2
+                        && tokenList.Tokens[1].TokenType == RToken.TokenTypes.REmpty
+                        && tokenList.Tokens[1].ChildTokens.Count == 1
+                        && tokenList.Tokens[1].ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation)
+                    adjustment -= tokenList.Tokens[1].ChildTokens[0].Lexeme.Text.Length;
+                else
+                    throw new Exception("Token list must have only a single entry.");
             }
             RToken tokenStatementNew = tokenList.Tokens[0];
             AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
@@ -368,7 +380,7 @@ namespace RInsightF461
                            token: tokenStatementNew);
             _token = tokenStatementNew;
 
-            return operatorAndParam.Length;
+            return adjustment;
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -377,24 +389,18 @@ namespace RInsightF461
         /// then replaces  the operator's parameter <paramref name="parameterNumber"/> with 
         /// <paramref name="parameterScript"/>. Returns the difference in length between the old 
         /// parameter and the new parameter. If the operator is not found, then throws an exception. 
-        /// If the parameter number is greater than 1, then throws an exception.
-        /// todo only parameters 0 and 1 are currently supported; only binary operators supported
+        /// todo how are the existing/new parameter's presentation tokens handled, before or after parameter, even at end of statement?
         /// </summary>
         /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
         /// <param name="parameterNumber"> Zero for the left hand parameter (e.g. `a` in `a+b`), 
-        ///                                1 for the right hand parameter (e.g. `b` in `a+b`)</param>
+        ///         1 for the right hand parameter (e.g. `b` in `a+b`)
+        ///         2 or more for any following parameters (e.g. `c` in `a+b+c`)(</param>
         /// <param name="parameterScript"> The new parameter value</param>
         /// <returns></returns>
         /// ----------------------------------------------------------------------------------------
         internal int OperatorUpdateParam(string operatorName, uint parameterNumber,
                                          string parameterScript)
         {
-            //if parameterNumber is > 1 then throw exception
-            if (parameterNumber > 1)
-            {
-                throw new Exception("Parameter number must be 0 or 1.");
-            }
-
             // find the first occurence of the operator in the statement
             List<RToken> operators = GetTokensOperators(_token, operatorName);
             if (operators.Count == 0)
@@ -424,14 +430,6 @@ namespace RInsightF461
                                            indexParameterToReplace].ScriptPosStartStatement,
                            scriptPosMin: 0,
                            token: tokenParameter);
-
-            // if tokenParameter is not a binary or unary operator then throw exception
-            if (tokenOperator.TokenType != RToken.TokenTypes.ROperatorBinary
-                && tokenOperator.TokenType != RToken.TokenTypes.ROperatorUnaryLeft
-                && tokenOperator.TokenType != RToken.TokenTypes.ROperatorUnaryRight)
-            {
-                throw new Exception("Parameter must be a binary or unary operator.");
-            }
 
             // calculate adjustment for start positions of all tokens in the statement that come
             // after the replaced parameter
