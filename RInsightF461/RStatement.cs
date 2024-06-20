@@ -391,7 +391,7 @@ namespace RInsightF461
             {
                 insertPos = (int)operators[0].ScriptPosStartStatement;
             }
-            else if (parameterNumber >= operators.Count)
+            else if (parameterNumber > operators.Count)
             {
                 insertPos = (int)operators[(int)operators.Count - 1].ScriptPosEndStatement;
             }
