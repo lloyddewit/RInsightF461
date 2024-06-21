@@ -413,72 +413,86 @@ namespace RInsightF461
             int paramToReplaceLength;
             if (parameterNumber == 0)
             {
+                // update left-hand operand of first operator
                 RToken tokenOperatorToUpdate = operators[0];
                 insertPos = (int)tokenOperatorToUpdate.ScriptPosStartStatement;
-                if (tokenOperatorToUpdate.ChildTokens.Count < 1
-                    || tokenOperatorToUpdate.ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
-                    paramToReplaceLength = (int)tokenOperatorToUpdate.ScriptPos - insertPos;
-                else
-                    paramToReplaceLength = (int)tokenOperatorToUpdate.ChildTokens[0].ScriptPos - insertPos;
+                paramToReplaceLength = (int)tokenOperatorToUpdate.ScriptPos - insertPos;
+
+                // keep any presentation info that comes before the left-hand operand
+                RToken tokenOperand = GetFirstNonPresentationChild(tokenOperatorToUpdate);
+                if (tokenOperand.ChildTokens.Count > 0
+                        && tokenOperand.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation)
+                {
+                    int presentationLength = GetText(tokenOperand.ChildTokens[0]).Length;
+                    insertPos += presentationLength;
+                    paramToReplaceLength -= presentationLength;
+                }
+
+                // keep any presentation information that comes before the operator
+                if (tokenOperatorToUpdate.ChildTokens.Count >= 1
+                        && tokenOperatorToUpdate.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation)
+                {
+                    int presentationLength = GetText(tokenOperatorToUpdate.ChildTokens[0]).Length;
+                    paramToReplaceLength -= presentationLength;
+                }                  
             }
-            else if (parameterNumber > operators.Count) //todo continue from here
+            else if (parameterNumber > operators.Count)
             {
-                insertPos = (int)operators[(int)operators.Count - 1].ScriptPosEndStatement;
-                int paramToReplaceIndex = GetIndexFirstNonPresentationChild(operators[0]) + 1;
-                paramToReplaceLength = GetText(operators[(int)operators.Count - 1].ChildTokens[paramToReplaceIndex]).Length;
+                // update right-hand operand of last operator
+                RToken tokenOperatorToUpdate = operators[operators.Count - 1];
+                int paramToReplaceIndex = GetIndexFirstNonPresentationChild(tokenOperatorToUpdate) + 1;
+                RToken tokenOperand = tokenOperatorToUpdate.ChildTokens[paramToReplaceIndex];
+                insertPos = (int)tokenOperand.ScriptPosStartStatement;
+                paramToReplaceLength = GetText(tokenOperand).Length;
+
+                // keep any presentation info that comes before the right-hand operand
+                if (tokenOperand.ChildTokens.Count > 0
+                        && tokenOperand.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation)
+                {
+                    int presentationLength = GetText(tokenOperand.ChildTokens[0]).Length;
+                    insertPos += presentationLength;
+                    paramToReplaceLength -= presentationLength;
+                }                    
             }
             else
             {
-                RToken tokenOperatorToUpdate = operators[(int)parameterNumber - 1];
-                if (tokenOperatorToUpdate.ChildTokens.Count < 1
-                    || tokenOperatorToUpdate.ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
-                    insertPos = (int)tokenOperatorToUpdate.ScriptPos;
-                else
-                    insertPos = (int)tokenOperatorToUpdate.ChildTokens[0].ScriptPos;
+                // update right-hand operand of operator that precedes the parameter number
+                RToken tokenOperatorToUpdate = operators[(int)parameterNumber-1];
+                int paramToReplaceIndex = GetIndexFirstNonPresentationChild(tokenOperatorToUpdate) + 1;
+                RToken tokenOperand = tokenOperatorToUpdate.ChildTokens[paramToReplaceIndex];
+                insertPos = (int)tokenOperand.ScriptPosStartStatement;
+                paramToReplaceLength = GetText(tokenOperand).Length;
+
+                // keep any presentation info that comes before the right-hand operand
+                if (tokenOperand.ChildTokens.Count > 0
+                        && tokenOperand.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation)
+                {
+                    int presentationLength = GetText(tokenOperand.ChildTokens[0]).Length;
+                    insertPos += presentationLength;
+                    paramToReplaceLength -= presentationLength;
+                }
             }
             insertPos -= (int)_token.ScriptPosStartStatement;
-
-
-
-
-            RToken tokenOperator = operators[0];
-
-            // find index of the parameter to replace
-            int indexParameterToReplace = GetIndexFirstNonPresentationChild(tokenOperator)
-                                          + (int)parameterNumber;
-
-            // rescue any presentation info from the parameter to be replaced
-            if (tokenOperator.ChildTokens[indexParameterToReplace].ChildTokens.Count > 0
-                    && GetIndexFirstNonPresentationChild(
-                            tokenOperator.ChildTokens[indexParameterToReplace]) != 0)
+            string statementScriptNew = Text.Remove(insertPos, paramToReplaceLength)
+                                             .Insert(insertPos, parameterScript);
+            
+            // make token tree for new statement
+            RTokenList tokenList = new RTokenList(statementScriptNew);
+            if (tokenList.Tokens.Count != 1)
             {
-                string presentation =
-                        GetText(tokenOperator.ChildTokens[indexParameterToReplace].ChildTokens[0]);
-                parameterScript = presentation + parameterScript;
+                if (tokenList.Tokens.Count != 2
+                        || tokenList.Tokens[1].TokenType != RToken.TokenTypes.REmpty
+                        || tokenList.Tokens[1].ChildTokens.Count != 1
+                        || tokenList.Tokens[1].ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
+                    throw new Exception("Token list must have only a single entry.");
             }
-
-            // create the new parameter token
-            RTokenList tokenList = new RTokenList(parameterScript);
-            RToken tokenParameter = tokenList.Tokens[0];
-            AdjustStartPos(adjustment: (int)tokenOperator.ChildTokens[
-                                           indexParameterToReplace].ScriptPosStartStatement,
+            RToken tokenStatementNew = tokenList.Tokens[0];
+            AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
                            scriptPosMin: 0,
-                           token: tokenParameter);
+                           token: tokenStatementNew);
 
-            // calculate adjustment for start positions of all tokens in the statement that come
-            // after the replaced parameter
-            int adjustment = parameterScript.Length
-                             - GetText(tokenOperator.ChildTokens[indexParameterToReplace]).Length;
-
-            // adjust the script start position for all tokens in the statement that come after
-            // the replaced parameter
-            AdjustStartPos(adjustment: adjustment,
-                           scriptPosMin: tokenOperator.ChildTokens[
-                                             indexParameterToReplace].ScriptPosEndStatement,
-                           token: _token);
-
-            // replace old parameter with new parameter
-            tokenOperator.ChildTokens[indexParameterToReplace] = tokenParameter;
+            int adjustment = GetText(tokenStatementNew).Length - Text.Length;
+            _token = tokenStatementNew;
 
             return adjustment;
         }
