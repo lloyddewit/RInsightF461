@@ -388,8 +388,12 @@ namespace RInsightF461
         /// Searches the statement for the first occurence of <paramref name="operatorName"/> and 
         /// then replaces  the operator's parameter <paramref name="parameterNumber"/> with 
         /// <paramref name="parameterScript"/>. Returns the difference in length between the old 
-        /// parameter and the new parameter. If the operator is not found, then throws an exception. 
-        /// todo how are the existing/new parameter's presentation tokens handled, before or after parameter, even at end of statement?
+        /// parameter and the new parameter. <para>
+        /// Any presentation information (spaces, line breaks, comments) associated with the 
+        /// operator, or replaced operand, is preserved. </para><para>
+        /// If the operator is not found, then throws an exception. 
+        /// If the operator is unary and <paramref name="parameterNumber"/> is not zero, then throws
+        /// an exception. </para>
         /// </summary>
         /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
         /// <param name="parameterNumber"> Zero for the left hand parameter (e.g. `a` in `a+b`), 
@@ -411,70 +415,67 @@ namespace RInsightF461
             // find position in the statement to insert new operator param
             int insertPos;
             int paramToReplaceLength;
+            RToken tokenOperandLeftMost;
+
+            // if parameter number is zero then we may be updating unary or binary operator
             if (parameterNumber == 0)
             {
-                // update left-hand operand of first operator
+                // update first operand of first operator
                 RToken tokenOperatorToUpdate = operators[0];
-                insertPos = (int)tokenOperatorToUpdate.ScriptPosStartStatement;
-                paramToReplaceLength = (int)tokenOperatorToUpdate.ScriptPos - insertPos;
-
-                // keep any presentation info that comes before the left-hand operand
                 RToken tokenOperand = GetFirstNonPresentationChild(tokenOperatorToUpdate);
-                if (tokenOperand.ChildTokens.Count > 0
-                        && tokenOperand.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation)
-                {
-                    int presentationLength = GetText(tokenOperand.ChildTokens[0]).Length;
-                    insertPos += presentationLength;
-                    paramToReplaceLength -= presentationLength;
-                }
+                tokenOperandLeftMost = GetTokenLeftMost(tokenOperand);
+
+                insertPos = (int)tokenOperandLeftMost.ScriptPos;
+
+                // if unary right operator, then operand will be on the right of the operator
+                if (tokenOperatorToUpdate.TokenType == RToken.TokenTypes.ROperatorUnaryRight)
+                    paramToReplaceLength = GetText(tokenOperand).Length;
+                else
+                    paramToReplaceLength = (int)tokenOperatorToUpdate.ScriptPos - insertPos;
 
                 // keep any presentation information that comes before the operator
-                if (tokenOperatorToUpdate.ChildTokens.Count >= 1
-                        && tokenOperatorToUpdate.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation)
+                if (tokenOperatorToUpdate.TokenType != RToken.TokenTypes.ROperatorUnaryRight
+                        && tokenOperatorToUpdate.ChildTokens.Count >= 1
+                        && tokenOperatorToUpdate.ChildTokens[0].TokenType == 
+                            RToken.TokenTypes.RPresentation)
                 {
                     int presentationLength = GetText(tokenOperatorToUpdate.ChildTokens[0]).Length;
                     paramToReplaceLength -= presentationLength;
                 }                  
             }
-            else if (parameterNumber > operators.Count)
+            else // else we must be updating a binary operator
             {
-                // update right-hand operand of last operator
-                RToken tokenOperatorToUpdate = operators[operators.Count - 1];
+                if (operators[0].TokenType != RToken.TokenTypes.ROperatorBinary)
+                    throw new Exception("If updating operator parameter number > 0, " +
+                                        "then must be a binary operator.");
+
+                RToken tokenOperatorToUpdate;
+                if (parameterNumber > operators.Count)              
+                    // update right-hand operand of last operator
+                    tokenOperatorToUpdate = operators[operators.Count - 1];
+                else
+                    // update right-hand operand of operator that precedes the parameter number
+                    tokenOperatorToUpdate = operators[(int)parameterNumber-1];
+
                 int paramToReplaceIndex = GetIndexFirstNonPresentationChild(tokenOperatorToUpdate) + 1;
                 RToken tokenOperand = tokenOperatorToUpdate.ChildTokens[paramToReplaceIndex];
                 insertPos = (int)tokenOperand.ScriptPosStartStatement;
                 paramToReplaceLength = GetText(tokenOperand).Length;
 
-                // keep any presentation info that comes before the right-hand operand
-                if (tokenOperand.ChildTokens.Count > 0
-                        && tokenOperand.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation)
-                {
-                    int presentationLength = GetText(tokenOperand.ChildTokens[0]).Length;
-                    insertPos += presentationLength;
-                    paramToReplaceLength -= presentationLength;
-                }                    
+                tokenOperandLeftMost = GetTokenLeftMost(tokenOperand);
             }
-            else
-            {
-                // update right-hand operand of operator that precedes the parameter number
-                RToken tokenOperatorToUpdate = operators[(int)parameterNumber-1];
-                int paramToReplaceIndex = GetIndexFirstNonPresentationChild(tokenOperatorToUpdate) + 1;
-                RToken tokenOperand = tokenOperatorToUpdate.ChildTokens[paramToReplaceIndex];
-                insertPos = (int)tokenOperand.ScriptPosStartStatement;
-                paramToReplaceLength = GetText(tokenOperand).Length;
 
-                // keep any presentation info that comes before the right-hand operand
-                if (tokenOperand.ChildTokens.Count > 0
-                        && tokenOperand.ChildTokens[0].TokenType == RToken.TokenTypes.RPresentation)
-                {
-                    int presentationLength = GetText(tokenOperand.ChildTokens[0]).Length;
-                    insertPos += presentationLength;
-                    paramToReplaceLength -= presentationLength;
-                }
+            // keep any presentation info that comes before the operand
+            if (tokenOperandLeftMost.TokenType == RToken.TokenTypes.RPresentation)
+            {
+                int presentationLength = GetText(tokenOperandLeftMost).Length;
+                insertPos += presentationLength;
+                paramToReplaceLength -= presentationLength;
             }
+
             insertPos -= (int)_token.ScriptPosStartStatement;
             string statementScriptNew = Text.Remove(insertPos, paramToReplaceLength)
-                                             .Insert(insertPos, parameterScript);
+                                            .Insert(insertPos, parameterScript);
             
             // make token tree for new statement
             RTokenList tokenList = new RTokenList(statementScriptNew);
@@ -635,6 +636,29 @@ namespace RInsightF461
             }
 
             return null;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Returns the token in token tree <paramref name="token"/> that has the smallest script 
+        /// position (i.e. the left-most token).
+        /// </summary>
+        /// <param name="token"> The token in token tree <paramref name="token"/> that has the 
+        ///     smallest script position (i.e. the left-most token).</param>
+        /// <returns></returns>
+        /// ----------------------------------------------------------------------------------------
+        private static RToken GetTokenLeftMost(RToken token)
+        {
+            RToken tokenLeftMost = token;
+            foreach (RToken child in token.ChildTokens)
+            {
+                RToken childLeftMost = GetTokenLeftMost(child);
+                if (childLeftMost.ScriptPos < tokenLeftMost.ScriptPos)
+                {
+                    tokenLeftMost = childLeftMost;
+                }
+            }
+            return tokenLeftMost;
         }
 
         /// ----------------------------------------------------------------------------------------
