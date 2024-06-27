@@ -45,6 +45,33 @@ namespace RInsightF461
             }
         }
 
+        /// <summary>
+        /// todo for testing only
+        /// </summary>
+        /// <returns></returns>
+        public bool AreScriptPositionsConsistent()
+        {
+            uint EndPosPrev = 0;
+            foreach (DictionaryEntry entry in statements)
+            {
+                if (entry.Value is null)
+                {
+                    throw new Exception("The dictionary entry value cannot be null.");
+                }
+
+                uint key = (uint)entry.Key;
+                RStatement rStatement = (RStatement)entry.Value;
+                if (key != rStatement.StartPos 
+                    || rStatement.StartPos != EndPosPrev 
+                    || !rStatement.AreScriptPositionsConsistent())
+                {
+                    return false;
+                }
+                EndPosPrev = rStatement.EndPos;
+            }
+            return true;
+        }
+
         /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// Adds the parameter named <paramref name="parameterName"/> to the function named 

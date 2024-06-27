@@ -11,11 +11,17 @@ namespace RInsightF461
     /// </summary>
     public class RStatement
     {
+        /// <summary> The children of the token tree root </summary>
+        public List <RToken> ChildTokens { get { return _token.ChildTokens; } }
+
         /// <summary> True if this statement is an assignment statement </summary>
         public bool IsAssignment { get => GetIsAssignment(); }
 
         /// <summary> The position in the script where this statement starts </summary>
         public uint StartPos { get { return _token.ScriptPosStartStatement; } }
+
+        /// <summary> The position in the script where this statement ends </summary>
+        public uint EndPos { get { return _token.ScriptPosEndStatement; } }
 
         /// <summary>
         /// The text representation of this statement, including all formatting information (comments,
@@ -73,17 +79,33 @@ namespace RInsightF461
             }
         }
 
+        /// <summary>
+        /// todo for testing only
+        /// </summary>
+        /// <returns></returns>
+        internal bool AreScriptPositionsConsistent()
+        {
+            List<RToken> tokensFlat = GetTokensFlat(_token);
+            uint scriptPosExpected = tokensFlat[0].ScriptPos;
+            foreach (RToken tokenFlat in tokensFlat)
+            {
+                if (tokenFlat.ScriptPos != scriptPosExpected)
+                {
+                    return false;
+                }
+                scriptPosExpected += (uint)tokenFlat.Lexeme.Text.Length;
+            }
+            return true;
+        }
+
         /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// Adds the parameter named <paramref name="parameterName"/> to the function named 
         /// <paramref name="functionName"/>. The value of the parameter is set to 
         /// <paramref name="parameterValue"/>. If <paramref name="isQuoted"/> is true then encloses 
         /// the parameter value in double quotes. Returns the difference between the function's text  
-        /// length before/after adding the parameter. If the function is not 
-        /// found, then throws an exception.<para>
-        /// Preconditions: The function must have at least 1 parameter; the function must not 
-        /// already have a <paramref name="parameterName"/> parameter.</para>
-        /// todo - remove need for preconditions?
+        /// length before/after adding the parameter. 
+        /// If the function is not found, then throws an exception.
         /// </summary>
         /// <param name="functionName">    The name of the function to add the parameter to</param>
         /// <param name="parameterName">   The name of the function parameter to add</param>
@@ -109,77 +131,38 @@ namespace RInsightF461
                 throw new System.Exception("Function not found.");
             }
 
-            // create token tree for new parameter
             RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
             parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
             parameterNumber = Math.Min(parameterNumber,
                                        (uint)tokenBracketOpen.ChildTokens.Count - 1);
-            RToken tokenParameter;
+
+            // find position in the statement to insert new function param
+            int insertPos = (int)tokenBracketOpen.ChildTokens[(int)parameterNumber].ScriptPosStartStatement
+                            - (int)_token.ScriptPosStartStatement;
+
+            // create new statement script that includes new function parameter
+            string paramNameAndValue;
             if (parameterNumber == 0)
-            {
-                string dummyFunction = $"fn({parameterName}={parameterValue})";
-                RTokenList tokenList = new RTokenList(dummyFunction);
-                tokenParameter = tokenList.Tokens[0].ChildTokens[0].ChildTokens[0];
-            }
+                paramNameAndValue = tokenBracketOpen.ChildTokens.Count < 2
+                    ? $"{parameterName}={parameterValue}"
+                    : $"{parameterName}={parameterValue}, ";
             else
-            {
-                string dummyFunction = $"fn(param1=0, {parameterName}={parameterValue})";
-                RTokenList tokenList = new RTokenList(dummyFunction);
-                tokenParameter = tokenList.Tokens[0].ChildTokens[0].ChildTokens[1];
-            }
+                paramNameAndValue = $", {parameterName}={parameterValue}";
 
-            // find the new parameter's script position
-            uint scriptPosInsertPos =
-                    tokenBracketOpen.ChildTokens[(int)parameterNumber].ScriptPosStartStatement;
+            int adjustment = paramNameAndValue.Length;
+            string statementScriptNew = Text.Insert(insertPos, paramNameAndValue);
 
-            // set the correct script start position for the new parameter
-            AdjustStartPos(adjustment: (int)scriptPosInsertPos -
-                                         (int)tokenParameter.ScriptPosStartStatement,
+            // make token tree for new statement
+            RTokenList tokenList = new RTokenList(statementScriptNew);
+            if (tokenList.Tokens.Count != 1)
+                    throw new Exception("Token list must have only a single entry.");
+
+            RToken tokenStatementNew = tokenList.Tokens[0];
+            AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
                            scriptPosMin: 0,
-                           token: tokenParameter);
+                           token: tokenStatementNew);
+            _token = tokenStatementNew;
 
-            // if the new parameter is the new first parameter and the function already has at
-            // least one parameter, then add a comma before the old first parameter (e.g. if we
-            // add 'paramNew=0' as first param to 'fn(paramOld=1)', then we get
-            // 'fn(paramNew=0, paramOld=1)'.
-            int adjustment = 0;
-            bool functionHasParameters =
-                    (tokenBracketOpen.ChildTokens.Count == 2
-                     && !tokenBracketOpen.ChildTokens[0].IsPresentation)
-                    || tokenBracketOpen.ChildTokens.Count > 2;
-            if (parameterNumber == 0 && functionHasParameters)
-            {
-                // create a token that is the same as param 0 but preceded by a comma
-                RToken tokenParam0 = GetFirstNonPresentationChild(tokenBracketOpen);
-                string dummyFunction = "fn(a, " + GetText(tokenParam0) + ")";
-                RTokenList tokenList = new RTokenList(dummyFunction);
-                RToken tokenDummyParam1 = tokenList.Tokens[0].ChildTokens[0].ChildTokens[1];
-                AdjustStartPos(adjustment: (int)tokenParam0.ScriptPosStartStatement -
-                                           (int)tokenDummyParam1.ScriptPosStartStatement,
-                                             scriptPosMin: 0,
-                                             token: tokenDummyParam1);
-
-                // adjust the start positions of all tokens that come after the new parameter
-                // to account for the comma that was added
-                adjustment += 2; // length of ", "
-                AdjustStartPos(adjustment: adjustment,
-                               scriptPosMin: tokenParam0.ScriptPosEndStatement,
-                               token: _token);
-
-                // replace the old first param with the comma preceded version
-                tokenBracketOpen.ChildTokens[GetIndexFirstNonPresentationChild(tokenBracketOpen)]
-                        = tokenDummyParam1;
-            }
-
-            // adjust the script start position for all tokens in the statement that come after the
-            // new parameter
-            adjustment += GetText(tokenParameter).Length;
-            AdjustStartPos(adjustment: adjustment,
-                           scriptPosMin: scriptPosInsertPos,
-                           token: _token);
-
-            // insert the new parameter into the function's token tree
-            tokenBracketOpen.ChildTokens.Insert((int)parameterNumber, tokenParameter);
             return adjustment;
         }
 
