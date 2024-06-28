@@ -257,7 +257,9 @@ namespace RInsightF461
         /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
         /// update is specified by <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. 
-        /// todo update comment; build a token tree from parameterValue
+        /// If <paramref name="functionName"/> is not found, then does nothing and returns zero. 
+        /// Else returns the difference in length between the token's old value, and the token's 
+        /// new value.
         /// </summary>
         /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>
         /// <param name="parameterNumber"> The number of the parameter to update. For a function, 
@@ -274,6 +276,11 @@ namespace RInsightF461
                                               string parameterValue, bool isQuoted = false)
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
+            if (tokenFunction is null)
+            {
+                return 0;
+            }
+
             RToken tokenParameterValue = GetTokenParameterFunction(tokenFunction, parameterNumber);
 
             parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
@@ -648,6 +655,7 @@ namespace RInsightF461
         /// <summary>
         /// Returns the token that represents the value of parameter number 
         /// <paramref name="parameterNumber"/> in the function represented by <paramref name="token"/>.
+        /// todo handle illegal parameter numbers
         /// </summary>
         /// <param name="token">           A token that represents a function</param>
         /// <param name="parameterNumber"> The number of the parameter to update. The first 
