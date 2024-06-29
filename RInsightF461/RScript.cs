@@ -144,11 +144,11 @@ namespace RInsightF461
         /// ----------------------------------------------------------------------------------------
         public void FunctionUpdateParamValue(uint statementNumber, string functionName,
                                              uint parameterNumber, string parameterValue,
-                                             bool isQuoted = false)
+                                             bool isQuoted = false, uint occurence = 0)
         {
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.FunctionUpdateParamValue(
-                    functionName, parameterNumber, parameterValue, isQuoted);
+                    functionName, parameterNumber, parameterValue, isQuoted, occurence);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
 
