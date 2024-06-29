@@ -47,6 +47,40 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
+        /// This function is only used for regression testing.
+        /// It checks all the script positions in the script's token tree. It ensures that the 
+        /// dictionary keys are consistent with each statement's start position. It also ensures 
+        /// that each statement's start position is consistent with the previous statement's end 
+        /// position, and that within each statement, each token's script position is consistent 
+        /// with the position and length of the previous token.
+        /// </summary>
+        /// <returns> True if all positions are consistent, else false.</returns>
+        /// ----------------------------------------------------------------------------------------
+        public bool AreScriptPositionsConsistent()
+        {
+            uint EndPosPrev = 0;
+            foreach (DictionaryEntry entry in statements)
+            {
+                if (entry.Value is null)
+                {
+                    throw new Exception("The dictionary entry value cannot be null.");
+                }
+
+                uint key = (uint)entry.Key;
+                RStatement rStatement = (RStatement)entry.Value;
+                if (key != rStatement.StartPos 
+                    || rStatement.StartPos != EndPosPrev 
+                    || !rStatement.AreScriptPositionsConsistent())
+                {
+                    return false;
+                }
+                EndPosPrev = rStatement.EndPos;
+            }
+            return true;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
         /// Adds the parameter named <paramref name="parameterName"/> to the function named 
         /// <paramref name="functionName"/> in statement <paramref name="statementNumber"/>. 
         /// The value of the parameter is set to <paramref name="parameterValue"/>. 
