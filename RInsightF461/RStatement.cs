@@ -11,9 +11,6 @@ namespace RInsightF461
     /// </summary>
     public class RStatement
     {
-        /// <summary> The children of the token tree root </summary>
-        public List <RToken> ChildTokens { get { return _token.ChildTokens; } }
-
         /// <summary> True if this statement is an assignment statement </summary>
         public bool IsAssignment { get => GetIsAssignment(); }
 
@@ -73,16 +70,18 @@ namespace RInsightF461
             foreach (RToken tokenFlat in tokensFlat)
             {
                 if (tokenFlat.ScriptPos >= scriptPosMin)
-                {
                     tokenFlat.ScriptPos = (uint)((int)tokenFlat.ScriptPos + adjustment);
-                }
             }
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo for testing only
+        /// This function is only used for regression testing.
+        /// For each token in the statement, checks that the token's script position is consistent 
+        /// with the position and length of the previous token.
         /// </summary>
-        /// <returns></returns>
+        /// <returns> True if all positions are consistent, else false.</returns>
+        /// ----------------------------------------------------------------------------------------
         internal bool AreScriptPositionsConsistent()
         {
             List<RToken> tokensFlat = GetTokensFlat(_token);
@@ -90,9 +89,8 @@ namespace RInsightF461
             foreach (RToken tokenFlat in tokensFlat)
             {
                 if (tokenFlat.ScriptPos != scriptPosExpected)
-                {
                     return false;
-                }
+
                 scriptPosExpected += (uint)tokenFlat.Lexeme.Text.Length;
             }
             return true;
@@ -127,9 +125,7 @@ namespace RInsightF461
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
             if (tokenFunction is null)
-            {
-                throw new System.Exception("Function not found.");
-            }
+                throw new Exception("Function not found.");
 
             RToken tokenBracketOpen = GetFirstNonPresentationChild(tokenFunction);
             parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
@@ -137,7 +133,8 @@ namespace RInsightF461
                                        (uint)tokenBracketOpen.ChildTokens.Count - 1);
 
             // find position in the statement to insert new function param
-            int insertPos = (int)tokenBracketOpen.ChildTokens[(int)parameterNumber].ScriptPosStartStatement
+            RToken tokenParameter = tokenBracketOpen.ChildTokens[(int)parameterNumber];
+            int insertPos = (int)tokenParameter.ScriptPosStartStatement
                             - (int)_token.ScriptPosStartStatement;
 
             // create new statement script that includes new function parameter
@@ -153,11 +150,7 @@ namespace RInsightF461
             string statementScriptNew = Text.Insert(insertPos, paramNameAndValue);
 
             // make token tree for new statement
-            RTokenList tokenList = new RTokenList(statementScriptNew);
-            if (tokenList.Tokens.Count != 1)
-                    throw new Exception("Token list must have only a single entry.");
-
-            RToken tokenStatementNew = tokenList.Tokens[0];
+            RToken tokenStatementNew = GetTokenStatement(statementScriptNew);
             AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
                            scriptPosMin: 0,
                            token: tokenStatementNew);
@@ -277,9 +270,7 @@ namespace RInsightF461
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
             if (tokenFunction is null)
-            {
                 return 0;
-            }
 
             RToken tokenParameterValue = GetTokenParameterFunction(tokenFunction, parameterNumber);
 
@@ -321,9 +312,7 @@ namespace RInsightF461
             // find all occurences of the operator in the statement
             List<RToken> operators = GetTokensOperators(_token, operatorName);
             if (operators.Count == 0)
-            {
                 throw new Exception("Operator not found.");
-            }
 
             // find position in the statement to insert new operator param
             int insertPos;
@@ -390,19 +379,17 @@ namespace RInsightF461
         ///         1 for the right hand parameter (e.g. `b` in `a+b`)
         ///         2 or more for any following parameters (e.g. `c` in `a+b+c`)(</param>
         /// <param name="parameterScript"> The new parameter value</param>
-        /// <returns></returns>
+        /// <returns>                      The difference in length between the old parameter and 
+        ///                                the new parameter. A negative value indicates that the 
+        ///                                new parameter is shorter than the old parameter.</returns>
         /// ----------------------------------------------------------------------------------------
         internal int OperatorUpdateParam(string operatorName, uint parameterNumber,
                                          string parameterScript)
         {
-            // find the first occurence of the operator in the statement
             List<RToken> operators = GetTokensOperators(_token, operatorName);
             if (operators.Count == 0)
-            {
                 throw new Exception("Operator not found.");
-            }
 
-            // find position in the statement to insert new operator param
             int insertPos;
             int paramToReplaceLength;
             RToken tokenOperandLeftMost;
@@ -436,8 +423,7 @@ namespace RInsightF461
             else // else we must be updating a binary operator
             {
                 if (operators[0].TokenType != RToken.TokenTypes.ROperatorBinary)
-                    throw new Exception("If updating operator parameter number > 0, " +
-                                        "then must be a binary operator.");
+                    throw new Exception("For a unary operator, parameter number must be zero.");
 
                 RToken tokenOperatorToUpdate;
                 if (parameterNumber > operators.Count)              
@@ -465,19 +451,8 @@ namespace RInsightF461
 
             insertPos -= (int)_token.ScriptPosStartStatement;
             string statementScriptNew = Text.Remove(insertPos, paramToReplaceLength)
-                                            .Insert(insertPos, parameterScript);
-            
-            // make token tree for new statement
-            RTokenList tokenList = new RTokenList(statementScriptNew);
-            if (tokenList.Tokens.Count != 1)
-            {
-                if (tokenList.Tokens.Count != 2
-                        || tokenList.Tokens[1].TokenType != RToken.TokenTypes.REmpty
-                        || tokenList.Tokens[1].ChildTokens.Count != 1
-                        || tokenList.Tokens[1].ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
-                    throw new Exception("Token list must have only a single entry.");
-            }
-            RToken tokenStatementNew = tokenList.Tokens[0];
+                                            .Insert(insertPos, parameterScript);            
+            RToken tokenStatementNew = GetTokenStatement(statementScriptNew);
             AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
                            scriptPosMin: 0,
                            token: tokenStatementNew);
@@ -499,11 +474,9 @@ namespace RInsightF461
         {
 
             if (token.ChildTokens is null
-                || token.ChildTokens.Count == 0
-                || (token.ChildTokens.Count == 1 && token.ChildTokens[0].IsPresentation))
-            {
+                    || token.ChildTokens.Count == 0
+                    || (token.ChildTokens.Count == 1 && token.ChildTokens[0].IsPresentation))
                 throw new System.Exception("Token has no non-presentation children.");
-            }
 
             return token.ChildTokens[GetIndexFirstNonPresentationChild(token)];
         }
@@ -570,23 +543,18 @@ namespace RInsightF461
             List<RToken> tokensFlat = GetTokensFlat(_token);
             foreach (RToken token in tokensFlat)
             {
-                if (token.TokenType == RToken.TokenTypes.REmpty) continue;
+                if (token.TokenType == RToken.TokenTypes.REmpty)
+                    continue;
 
                 if (token.TokenType == RToken.TokenTypes.REndStatement)
-                {
                     text += ";";
-                }
                 else if (token.TokenType == RToken.TokenTypes.RKeyWord
                          && (token.Lexeme.Text == "else"
                              || token.Lexeme.Text == "in"
                              || token.Lexeme.Text == "repeat"))
-                {
                     text += " " + token.Lexeme.Text + " ";
-                }
                 else if (!token.IsPresentation) // ignore presentation tokens
-                {
                     text += token.Lexeme.Text;
-                }
             }
             // remove final trailing `;` (only needed to separate internal compound statements)
             text = text.Trim(';');
@@ -608,21 +576,17 @@ namespace RInsightF461
         private static RToken GetTokenFunction(RToken token, string functionName)
         {
             if ((token.TokenType == RToken.TokenTypes.RFunctionName
-                || token.TokenType == RToken.TokenTypes.ROperatorBinary
-                || token.TokenType == RToken.TokenTypes.ROperatorUnaryLeft
-                || token.TokenType == RToken.TokenTypes.ROperatorUnaryRight)
-               && token.Lexeme.Text == functionName)
-            {
+                        || token.TokenType == RToken.TokenTypes.ROperatorBinary
+                        || token.TokenType == RToken.TokenTypes.ROperatorUnaryLeft
+                        || token.TokenType == RToken.TokenTypes.ROperatorUnaryRight)
+                    && token.Lexeme.Text == functionName)
                 return token;
-            }
 
             foreach (var childToken in token.ChildTokens)
             {
                 var result = GetTokenFunction(childToken, functionName);
                 if (result != null)
-                {
                     return result;
-                }
             }
 
             return null;
@@ -644,9 +608,7 @@ namespace RInsightF461
             {
                 RToken childLeftMost = GetTokenLeftMost(child);
                 if (childLeftMost.ScriptPos < tokenLeftMost.ScriptPos)
-                {
                     tokenLeftMost = childLeftMost;
-                }
             }
             return tokenLeftMost;
         }
@@ -668,9 +630,7 @@ namespace RInsightF461
         {
             RToken tokenBracket = GetFirstNonPresentationChild(token);
             if (parameterNumber == 0)
-            {
                 return GetTokenParameterFunctionValue(tokenBracket);
-            }
 
             RToken tokenComma = tokenBracket.ChildTokens[GetIndexFirstNonPresentationChild(token)   
                                                                + (int)parameterNumber];
@@ -736,12 +696,10 @@ namespace RInsightF461
             var tokens = new List<RToken>();
 
             if ((token.TokenType == RToken.TokenTypes.ROperatorBinary
-                 || token.TokenType == RToken.TokenTypes.ROperatorUnaryLeft
-                 || token.TokenType == RToken.TokenTypes.ROperatorUnaryRight)
-                && token.Lexeme.Text == operatorText)
-            {
+                        || token.TokenType == RToken.TokenTypes.ROperatorUnaryLeft
+                        || token.TokenType == RToken.TokenTypes.ROperatorUnaryRight)
+                    && token.Lexeme.Text == operatorText)
                 tokens.Add(token);
-            }
 
             foreach (var child in token.ChildTokens)
             {
@@ -751,5 +709,35 @@ namespace RInsightF461
             tokens.Sort((x, y) => x.ScriptPos.CompareTo(y.ScriptPos));
             return tokens;
         }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Converts <paramref name="statementScript"/> into a token tree and returns the token at 
+        /// the root of the tree.
+        /// If <paramref name="statementScript"/> consists of more than one statement, then throws 
+        /// an exception.
+        /// </summary>
+        /// <param name="statementScript"></param>
+        /// <returns> A token that represents <paramref name="statementScript"/></returns>
+        /// ----------------------------------------------------------------------------------------
+        private static RToken GetTokenStatement(string statementScript)
+        {
+            RTokenList tokenList = new RTokenList(statementScript);
+
+            if (tokenList.Tokens.Count != 1)
+            {
+                // edge case: if the script is a single statement followed by an empty statement
+                // containing presentation information (spaces, comments, newlines ec.),
+                // then ignore the empty statement
+                if (tokenList.Tokens.Count != 2
+                        || tokenList.Tokens[1].TokenType != RToken.TokenTypes.REmpty
+                        || tokenList.Tokens[1].ChildTokens.Count != 1
+                        || tokenList.Tokens[1].ChildTokens[0].TokenType != RToken.TokenTypes.RPresentation)
+                    throw new Exception("Script must be a single legal statement.");
+            }
+
+            return tokenList.Tokens[0];
+        }
+
     }
 }

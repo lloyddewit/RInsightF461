@@ -45,10 +45,17 @@ namespace RInsightF461
             }
         }
 
+        /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// todo for testing only
+        /// This function is only used for regression testing.
+        /// It checks all the script positions in the script's token tree. It ensures that the 
+        /// dictionary keys are consistent with each statement's start position. It also ensures 
+        /// that each statement's start position is consistent with the previous statement's end 
+        /// position, and that within each statement, each token's script position is consistent 
+        /// with the position and length of the previous token.
         /// </summary>
-        /// <returns></returns>
+        /// <returns> True if all positions are consistent, else false.</returns>
+        /// ----------------------------------------------------------------------------------------
         public bool AreScriptPositionsConsistent()
         {
             uint EndPosPrev = 0;
