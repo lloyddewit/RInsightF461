@@ -130,8 +130,7 @@ namespace RInsightF461
         /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
         /// update is specified by <paramref name="statementNumber"/>, 
-        /// <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. 
-        /// todo update comment
+        /// <paramref name="functionName"/>, <paramref name="occurence"/> and <paramref name="parameterNumber"/>. 
         /// </summary>
         /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
         /// <param name="functionName">    The name of the function or operator (e.g. `+`, `-` etc.)</param>
@@ -141,14 +140,17 @@ namespace RInsightF461
         /// <param name="parameterValue">  The token's new value</param>
         /// <param name="isQuoted">        If True then put double quotes around 
         ///     <paramref name="parameterValue"/></param>
+        /// <param name="occurence">       Only needed if the statement contains more than one call 
+        ///     to <paramref name="functionName"/>. Specifies which occurence of the function to 
+        ///     update (zero is the first occurence of the function in the statement).</param>
         /// ----------------------------------------------------------------------------------------
         public void FunctionUpdateParamValue(uint statementNumber, string functionName,
                                              uint parameterNumber, string parameterValue,
-                                             bool isQuoted = false)
+                                             bool isQuoted = false, uint occurence = 0)
         {
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.FunctionUpdateParamValue(
-                    functionName, parameterNumber, parameterValue, isQuoted);
+                    functionName, parameterNumber, parameterValue, isQuoted, occurence);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
 

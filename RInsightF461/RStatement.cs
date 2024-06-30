@@ -249,7 +249,8 @@ namespace RInsightF461
         /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// Sets the value of the specified token to <paramref name="parameterValue"/>. The token to 
-        /// update is specified by <paramref name="functionName"/>, and <paramref name="parameterNumber"/>. 
+        /// update is specified by <paramref name="functionName"/>, <paramref name="occurence"/> and 
+        /// <paramref name="parameterNumber"/>. 
         /// If <paramref name="functionName"/> is not found, then does nothing and returns zero. 
         /// Else returns the difference in length between the token's old value, and the token's 
         /// new value.
@@ -261,14 +262,18 @@ namespace RInsightF461
         /// <param name="parameterValue">  The token's new value</param>
         /// <param name="isQuoted">        If True then put double quotes around 
         ///     <paramref name="parameterValue"/></param>
+        /// <param name="occurence">       Only needed if the statement contains more than one call 
+        ///     to <paramref name="functionName"/>. Specifies which occurence of the function to 
+        ///     update (zero is the first occurence of the function in the statement).</param>
         /// <returns>                      The difference in length between the token's old value, 
         ///     and the token's new value. A negative number indicates that the new value is shorter 
         ///     than the new value.</returns>
         /// ----------------------------------------------------------------------------------------
         internal int FunctionUpdateParamValue(string functionName, uint parameterNumber,
-                                              string parameterValue, bool isQuoted = false)
+                                              string parameterValue, bool isQuoted,
+                                              uint occurence)
         {
-            RToken tokenFunction = GetTokenFunction(_token, functionName);
+            RToken tokenFunction = GetTokenFunction(_token, functionName, occurence);
             if (tokenFunction is null)
                 return 0;
 
@@ -569,27 +574,22 @@ namespace RInsightF461
         /// </summary>
         /// <param name="token">        The root of the function tree</param>
         /// <param name="functionName"> The name of the function to search for</param>
+        /// <param name="occurence">    Only needed if the statement contains more than one call 
+        ///     to <paramref name="functionName"/>. Specifies which occurence of the function to 
+        ///     update (zero is the first occurence of the function in the statement).</param>
         /// <returns>                   The first token found that represents a function called 
         ///                             <paramref name="functionName"/>. If the function token is 
         ///                             not found, then returns null.</returns>
         /// ----------------------------------------------------------------------------------------
-        private static RToken GetTokenFunction(RToken token, string functionName)
+        private static RToken GetTokenFunction(RToken token, 
+                                               string functionName, 
+                                               uint occurence = 0)
         {
-            if ((token.TokenType == RToken.TokenTypes.RFunctionName
-                        || token.TokenType == RToken.TokenTypes.ROperatorBinary
-                        || token.TokenType == RToken.TokenTypes.ROperatorUnaryLeft
-                        || token.TokenType == RToken.TokenTypes.ROperatorUnaryRight)
-                    && token.Lexeme.Text == functionName)
-                return token;
-
-            foreach (var childToken in token.ChildTokens)
-            {
-                var result = GetTokenFunction(childToken, functionName);
-                if (result != null)
-                    return result;
-            }
-
-            return null;
+            List <RToken> tokenFunctions = GetTokensFunctions(token, functionName);
+            if (tokenFunctions.Count <= occurence)
+                return null;
+                        
+            return tokenFunctions[(int)occurence];
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -677,6 +677,37 @@ namespace RInsightF461
             }
 
             tokens.Sort((a, b) => a.ScriptPos.CompareTo(b.ScriptPos));
+            return tokens;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// Recursively searches for the function <paramref name="functionName"/> in the 
+        /// token tree represented by <paramref name="token"/> and returns a list of all the 
+        /// occurences found. The tokens in the list are ordered by their position in the script.
+        /// </summary>
+        /// <param name="token">        The root of the token tree</param>
+        /// <param name="functionName"> The function name to search for (e.g. 'ggplot')</param>
+        /// <returns> A list of all the occurences found. The tokens in the list are ordered by 
+        ///           their position in the script.</returns>
+        /// ----------------------------------------------------------------------------------------
+        private static List<RToken> GetTokensFunctions(RToken token, string functionName)
+        {
+            var tokens = new List<RToken>();
+
+            if ((token.TokenType == RToken.TokenTypes.RFunctionName
+                        || token.TokenType == RToken.TokenTypes.ROperatorBinary
+                        || token.TokenType == RToken.TokenTypes.ROperatorUnaryLeft
+                        || token.TokenType == RToken.TokenTypes.ROperatorUnaryRight)
+                    && token.Lexeme.Text == functionName)
+                tokens.Add(token);
+
+            foreach (var child in token.ChildTokens)
+            {
+                tokens.AddRange(GetTokensFunctions(child, functionName));
+            }
+
+            tokens.Sort((x, y) => x.ScriptPos.CompareTo(y.ScriptPos));
             return tokens;
         }
 
