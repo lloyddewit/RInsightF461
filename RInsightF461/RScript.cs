@@ -81,28 +81,38 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// Adds the parameter named <paramref name="parameterName"/> to the function named 
+        /// Adds the parameter <paramref name="parameterValue"/> to the function named 
         /// <paramref name="functionName"/> in statement <paramref name="statementNumber"/>. 
-        /// The value of the parameter is set to <paramref name="parameterValue"/>. 
-        /// If <paramref name="isQuoted"/> is true then encloses the parameter value in double quotes.
+        /// If <paramref name="parameterName"/> is specified then 
+        /// adds or replaces the named parameter, else adds an unamed parameter. If <paramref name="isQuoted"/> 
+        /// is true then encloses the parameter value in double quotes.
+        /// If <paramref name="functionName"/> is not found, then throws an exception.
         /// </summary>
         /// <param name="statementNumber"> The number of the statement in the script to search for 
-        ///                                the function</param>
-        /// <param name="functionName">    The function to add the parameter to</param>
-        /// <param name="parameterName">   The name of the paramater to add</param>
-        /// <param name="parameterValue">  The value of the new parameter</param>
-        /// <param name="parameterNumber"> The number of the parameter to update. 
-        /// <param name="isQuoted">        If true then enclose the parameter value in double quotes</param>
+        ///     the function</param>
+        /// <param name="functionName">    The name of the function to add the parameter to</param>
+        /// <param name="parameterName">   The name of the function parameter to add. If empty, 
+        ///     then adds an unamed parameter to the function.</param>
+        /// <param name="parameterValue">  The new value of the added parameter</param>
+        /// <param name="parameterNumber"> The number of the existing parameter to add the new 
+        ///     parameter in front of. If zero, then adds the parameter before any existing 
+        ///     parameters. If greater than the number of existing parameters, then adds the 
+        ///     parameter after the last existing parameter.</param>
+        /// <param name="isQuoted">        If true, then encloses the parameter value in double 
+        ///     quotes</param>
         /// ----------------------------------------------------------------------------------------
-        public void FunctionAddParamByName(uint statementNumber, string functionName, 
-                                           string parameterName, string parameterValue, 
-                                           uint parameterNumber = uint.MaxValue, 
-                                           bool isQuoted = false)
+        public void FunctionAddParam(uint statementNumber, string functionName,
+                                     string parameterName, string parameterValue,
+                                     uint parameterNumber = uint.MaxValue,
+                                     bool isQuoted = false)
         {
-            FunctionRemoveParamByName(statementNumber, functionName, parameterName);
+            if (!string.IsNullOrEmpty(parameterName))
+            {
+                FunctionRemoveParamByName(statementNumber, functionName, parameterName);
+            }            
 
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
-            int adjustment = statementToUpdate.FunctionAddParamByName(
+            int adjustment = statementToUpdate.FunctionAddParam(
                     functionName, parameterName, parameterValue, parameterNumber, isQuoted);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }

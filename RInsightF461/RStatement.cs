@@ -98,15 +98,16 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// Adds the parameter named <paramref name="parameterName"/> to the function named 
-        /// <paramref name="functionName"/>. The value of the parameter is set to 
-        /// <paramref name="parameterValue"/>. If <paramref name="isQuoted"/> is true then encloses 
-        /// the parameter value in double quotes. Returns the difference between the function's text  
-        /// length before/after adding the parameter. 
-        /// If the function is not found, then throws an exception.
+        /// Adds the parameter <paramref name="parameterValue"/> to the function named 
+        /// <paramref name="functionName"/>. If <paramref name="parameterName"/> is specified then 
+        /// adds a named parameter, else adds an unamed parameter. If <paramref name="isQuoted"/> 
+        /// is true then encloses the parameter value in double quotes. Returns the difference 
+        /// between the function's text length before/after adding the parameter. 
+        /// If <paramref name="functionName"/> is not found, then throws an exception.
         /// </summary>
         /// <param name="functionName">    The name of the function to add the parameter to</param>
-        /// <param name="parameterName">   The name of the function parameter to add</param>
+        /// <param name="parameterName">   The name of the function parameter to add. If empty, 
+        ///     then adds an unamed parameter to the function.</param>
         /// <param name="parameterValue">  The new value of the added parameter</param>
         /// <param name="parameterNumber"> The number of the existing parameter to add the new 
         ///     parameter in front of. If zero, then adds the parameter before any existing 
@@ -119,9 +120,9 @@ namespace RInsightF461
         ///     then the resulting function is `fn(a=1, b=2, c=3)` and 5 is returned 
         ///     (the length of `, c=3`). </returns>
         /// ----------------------------------------------------------------------------------------
-        internal int FunctionAddParamByName(string functionName, string parameterName,
-                                            string parameterValue, uint parameterNumber,
-                                            bool isQuoted)
+        internal int FunctionAddParam(string functionName, string parameterName,
+                                      string parameterValue, uint parameterNumber,
+                                      bool isQuoted)
         {
             RToken tokenFunction = GetTokenFunction(_token, functionName);
             if (tokenFunction is null)
@@ -138,13 +139,15 @@ namespace RInsightF461
                             - (int)_token.ScriptPosStartStatement;
 
             // create new statement script that includes new function parameter
-            string paramNameAndValue;
+            string paramNameAndValue = string.IsNullOrEmpty(parameterName)
+                                       ? parameterValue
+                                       : $"{parameterName}={parameterValue}";
             if (parameterNumber == 0)
                 paramNameAndValue = tokenBracketOpen.ChildTokens.Count < 2
-                    ? $"{parameterName}={parameterValue}"
-                    : $"{parameterName}={parameterValue}, ";
+                    ? paramNameAndValue
+                    : $"{paramNameAndValue}, ";
             else
-                paramNameAndValue = $", {parameterName}={parameterValue}";
+                paramNameAndValue = $", {paramNameAndValue}";
 
             int adjustment = paramNameAndValue.Length;
             string statementScriptNew = Text.Insert(insertPos, paramNameAndValue);
