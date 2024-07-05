@@ -104,6 +104,7 @@ namespace RInsightF461
         /// the parameter value in double quotes. Returns the difference between the function's text  
         /// length before/after adding the parameter. 
         /// If the function is not found, then throws an exception.
+        /// todo update comment for adding param with no name; rename function to FunctionAddParam?
         /// </summary>
         /// <param name="functionName">    The name of the function to add the parameter to</param>
         /// <param name="parameterName">   The name of the function parameter to add</param>
@@ -138,13 +139,15 @@ namespace RInsightF461
                             - (int)_token.ScriptPosStartStatement;
 
             // create new statement script that includes new function parameter
-            string paramNameAndValue;
+            string paramNameAndValue = string.IsNullOrEmpty(parameterName)
+                                       ? parameterValue
+                                       : $"{parameterName}={parameterValue}";
             if (parameterNumber == 0)
                 paramNameAndValue = tokenBracketOpen.ChildTokens.Count < 2
-                    ? $"{parameterName}={parameterValue}"
-                    : $"{parameterName}={parameterValue}, ";
+                    ? paramNameAndValue
+                    : $"{paramNameAndValue}, ";
             else
-                paramNameAndValue = $", {parameterName}={parameterValue}";
+                paramNameAndValue = $", {paramNameAndValue}";
 
             int adjustment = paramNameAndValue.Length;
             string statementScriptNew = Text.Insert(insertPos, paramNameAndValue);
