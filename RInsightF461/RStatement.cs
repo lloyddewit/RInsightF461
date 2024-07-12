@@ -473,6 +473,74 @@ namespace RInsightF461
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
+        /// Searches statement <paramref name="statementNumber"/> for the first occurence of 
+        /// <paramref name="operatorName"/> and then replaces the operator's parameter 
+        /// <paramref name="parameterNumber"/> presentation text with <paramref name="presentation"/>. 
+        /// Returns the difference in length between the old presentation text and the new 
+        /// presentation text. <para>
+        /// If <paramref name="parameterNumber"/> is not zero, then throws an exception. todo
+        /// If the operator is not found, then throws an exception. 
+        /// If the operator is unary, then throws an exception. </para>
+        /// </summary>
+        /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
+        /// <param name="parameterNumber"> Zero for the left hand parameter (e.g. `a` in `a+b`), 
+        ///         1 for the right hand parameter (e.g. `b` in `a+b`)
+        ///         2 or more for any following parameters (e.g. `c` in `a+b+c`)(</param>
+        /// <param name="presentation">    The new presentation text for the parameter</param>
+        /// <returns>                      The difference in length between the old presentation text
+        ///     and the new presentation text. A negative value indicates that the new presentation 
+        ///     text is shorter than the old parameter.</returns>
+        /// ----------------------------------------------------------------------------------------
+        internal int OperatorUpdateParamPresentation(string operatorName, uint parameterNumber,
+                                                     string presentation)
+        {
+            if (parameterNumber != 0)
+                throw new Exception(
+                    "Updating presentation text of right-hand operands is currently not supported.");
+
+            List <RToken> operators = GetTokensOperators(_token, operatorName);
+            if (operators.Count == 0)
+                throw new Exception("Operator not found.");
+            if (operators[0].TokenType != RToken.TokenTypes.ROperatorBinary)
+                throw new Exception(
+                    "Updating presentation text of unary operators is currently not supported.");
+
+            // find pos in script to insert new presentation text
+            RToken tokenOperatorToUpdate = operators[0];
+            RToken tokenOperandLeftMost = GetTokenLeftMost(tokenOperatorToUpdate);
+            int insertPos = (int)tokenOperandLeftMost.ScriptPos;
+            insertPos -= (int)_token.ScriptPosStartStatement;
+
+            // find length of presentation text to replace
+            RToken tokenOperand = GetFirstNonPresentationChild(tokenOperatorToUpdate);
+            int presentationTextCurrentLen = 0;
+            if (tokenOperand.ChildTokens.Count > 0 
+                && GetIndexFirstNonPresentationChild(tokenOperand) != 0)
+            {
+                presentationTextCurrentLen = tokenOperand.ChildTokens[0].Lexeme.Text.Length;
+            }
+
+            // remove any exisiting presentation text
+            string statementScriptNew = Text.Remove(insertPos, presentationTextCurrentLen);
+
+            // add new presentation text
+            statementScriptNew = statementScriptNew.Insert(insertPos, presentation);
+
+            // create new token tree for statement
+            RToken tokenStatementNew = GetTokenStatement(statementScriptNew);
+
+            AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
+               scriptPosMin: 0,
+               token: tokenStatementNew);
+
+            int adjustment = GetText(tokenStatementNew).Length - Text.Length;
+            _token = tokenStatementNew;
+
+            return adjustment;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
         /// Returns the first child of <paramref name="token"/> that is not a presentation token.
         /// </summary>
         /// <param name="token"> the token to search for a non-presentation child</param>
