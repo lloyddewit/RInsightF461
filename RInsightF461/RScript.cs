@@ -257,7 +257,10 @@ namespace RInsightF461
         /// <summary>
         /// Searches statement <paramref name="statementNumber"/> for the first occurence of 
         /// <paramref name="operatorName"/> and then replaces the operator's parameter 
-        /// <paramref name="parameterNumber"/> presentation text with <paramref name="presentation"/>. 
+        /// <paramref name="parameterNumber"/> presentation text with <paramref name="presentation"/>.<para>
+        /// If the operator is not found, then throws an exception. 
+        /// If the operator is unary, then throws an exception. 
+        /// If <paramref name="parameterNumber"/> is not zero, then throws an exception. todo</para>
         /// </summary>
         /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
         /// <param name="operatorName">    The operator to search for (e.g. '+')</param>

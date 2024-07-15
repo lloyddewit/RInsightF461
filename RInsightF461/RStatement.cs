@@ -478,9 +478,9 @@ namespace RInsightF461
         /// <paramref name="parameterNumber"/> presentation text with <paramref name="presentation"/>. 
         /// Returns the difference in length between the old presentation text and the new 
         /// presentation text. <para>
-        /// If <paramref name="parameterNumber"/> is not zero, then throws an exception. todo
         /// If the operator is not found, then throws an exception. 
-        /// If the operator is unary, then throws an exception. </para>
+        /// If the operator is unary, then throws an exception. 
+        /// If <paramref name="parameterNumber"/> is not zero, then throws an exception. todo</para>
         /// </summary>
         /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
         /// <param name="parameterNumber"> Zero for the left hand parameter (e.g. `a` in `a+b`), 
@@ -489,7 +489,7 @@ namespace RInsightF461
         /// <param name="presentation">    The new presentation text for the parameter</param>
         /// <returns>                      The difference in length between the old presentation text
         ///     and the new presentation text. A negative value indicates that the new presentation 
-        ///     text is shorter than the old parameter.</returns>
+        ///     text is shorter than the old presentation text.</returns>
         /// ----------------------------------------------------------------------------------------
         internal int OperatorUpdateParamPresentation(string operatorName, uint parameterNumber,
                                                      string presentation)
@@ -516,9 +516,7 @@ namespace RInsightF461
             int presentationTextCurrentLen = 0;
             if (tokenOperand.ChildTokens.Count > 0 
                 && GetIndexFirstNonPresentationChild(tokenOperand) != 0)
-            {
-                presentationTextCurrentLen = tokenOperand.ChildTokens[0].Lexeme.Text.Length;
-            }
+                presentationTextCurrentLen = GetText(tokenOperand.ChildTokens[0]).Length;
 
             // remove any exisiting presentation text
             string statementScriptNew = Text.Remove(insertPos, presentationTextCurrentLen);
