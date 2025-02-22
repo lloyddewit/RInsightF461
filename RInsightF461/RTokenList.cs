@@ -45,7 +45,7 @@ namespace RInsightF461
                 new string[] { "*", "/" },
                 new string[] { "+", "-" },
                 new string[] { "<", ">", "<>", "<=", ">=", "==", "!=" },
-                new string[] { "!", "!!" }, // !! is not standard R but is used by tidyverse
+                new string[] { "!", "!!", "!!!" }, // !! and !!! are not standard R but are used by tidyverse
                 new string[] { "&", "&&" },
                 new string[] { "|", "||" },
                 new string[] { "~" },       // unary or binary
