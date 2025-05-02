@@ -233,23 +233,28 @@ namespace RInsightF461
         /// <summary>
         /// Searches statement <paramref name="statementNumber"/> for the first occurence of 
         /// <paramref name="operatorName"/> and then replaces the operator's parameter 
-        /// <paramref name="parameterNumber"/> with <paramref name="parameterScript"/>. 
+        /// <paramref name="parameterNumber"/> with <paramref name="parameterValue"/>. 
+        /// If <paramref name="isQuoted"/> is true then encloses the parameter value in double quotes.
         /// </summary>
         /// <param name="statementNumber"> The statement to update (0 indicates the first statement)</param>
         /// <param name="operatorName">    The operator to search for (e.g. '+')</param>
         /// <param name="parameterNumber"> Zero for the left hand parameter (e.g. `a` in `a+b`), 
         ///                                1 for the right hand parameter (e.g. `b` in `a+b`)</param>
-        /// <param name="parameterScript"> The new parameter</param>
+        /// <param name="parameterValue"> The new parameter</param>
+        /// <param name="isQuoted">        If true, then encloses the parameter value in double 
+        ///     quotes</param>
         /// ----------------------------------------------------------------------------------------
         public void OperatorUpdateParam(uint statementNumber,
                                         string operatorName,
                                         uint parameterNumber,
-                                        string parameterScript)
+                                        string parameterValue,
+                                        bool isQuoted = false)
         {
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.OperatorUpdateParam(operatorName,
                                                                    parameterNumber,
-                                                                   parameterScript);
+                                                                   parameterValue,
+                                                                   isQuoted);
             AdjustStatementsStartPos(statementNumber + 1, adjustment);
         }
 
