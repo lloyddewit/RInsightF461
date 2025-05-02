@@ -373,8 +373,9 @@ namespace RInsightF461
         /// ----------------------------------------------------------------------------------------
         /// <summary>
         /// Searches the statement for the first occurence of <paramref name="operatorName"/> and 
-        /// then replaces  the operator's parameter <paramref name="parameterNumber"/> with 
-        /// <paramref name="parameterScript"/>. Returns the difference in length between the old 
+        /// then replaces the operator's parameter <paramref name="parameterNumber"/> with 
+        /// <paramref name="parameterValue"/>. If <paramref name="isQuoted"/> is true then encloses 
+        /// the parameter value in double quotes. Returns the difference in length between the old 
         /// parameter and the new parameter. <para>
         /// Any presentation information (spaces, line breaks, comments) associated with the 
         /// operator, or replaced operand, is preserved. </para><para>
@@ -386,13 +387,15 @@ namespace RInsightF461
         /// <param name="parameterNumber"> Zero for the left hand parameter (e.g. `a` in `a+b`), 
         ///         1 for the right hand parameter (e.g. `b` in `a+b`)
         ///         2 or more for any following parameters (e.g. `c` in `a+b+c`)(</param>
-        /// <param name="parameterScript"> The new parameter value</param>
+        /// <param name="parameterValue">  The new parameter value</param>
+        /// <param name="isQuoted">        If true, then encloses the parameter value in double 
+        ///                                quotes</param>
         /// <returns>                      The difference in length between the old parameter and 
         ///                                the new parameter. A negative value indicates that the 
         ///                                new parameter is shorter than the old parameter.</returns>
         /// ----------------------------------------------------------------------------------------
         internal int OperatorUpdateParam(string operatorName, uint parameterNumber,
-                                         string parameterScript)
+                                         string parameterValue, bool isQuoted = false)
         {
             List<RToken> operators = GetTokensOperators(_token, operatorName);
             if (operators.Count == 0)
@@ -458,8 +461,9 @@ namespace RInsightF461
             }
 
             insertPos -= (int)_token.ScriptPosStartStatement;
+            parameterValue = isQuoted ? "\"" + parameterValue + "\"" : parameterValue;
             string statementScriptNew = Text.Remove(insertPos, paramToReplaceLength)
-                                            .Insert(insertPos, parameterScript);            
+                                            .Insert(insertPos, parameterValue);            
             RToken tokenStatementNew = GetTokenStatement(statementScriptNew);
             AdjustStartPos(adjustment: (int)_token.ScriptPosStartStatement,
                            scriptPosMin: 0,
