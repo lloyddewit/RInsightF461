@@ -18,11 +18,11 @@ namespace RInsightF461
         public OrderedDictionary statements = new OrderedDictionary();
 
         /// ----------------------------------------------------------------------------------------
-        /// <summary>   Parses the R script in <paramref name="strInput"/> and populates the 
+        /// <summary>   Parses the R script in <paramref name="script"/> and populates the 
         ///             dictionary of R statements.
         ///             <para>
         ///             This subroutine will accept, and correctly process all valid R. However, this 
-        ///             class does not attempt to validate <paramref name="strInput"/>. If it is not 
+        ///             class does not attempt to validate <paramref name="script"/>. If it is not 
         ///             valid R then this subroutine may still process the script without throwing an 
         ///             exception. In this case, the list of R statements will be undefined.
         ///             </para><para>
@@ -30,14 +30,14 @@ namespace RInsightF461
         ///             valid R) but may generate false positives (accept invalid R).
         ///             </para></summary>
         /// 
-        /// <param name="strInput"> The R script to parse. This must be valid R according to the 
-        ///                         R language specification at 
-        ///                         https://cran.r-project.org/doc/manuals/r-release/R-lang.html 
-        ///                         (referenced 01 Feb 2021).</param>
+        /// <param name="script"> The R script to parse. This must be valid R according to the 
+        ///                        R language specification at 
+        ///                        https://cran.r-project.org/doc/manuals/r-release/R-lang.html 
+        ///                        (referenced 01 Feb 2021).</param>
         /// ----------------------------------------------------------------------------------------
-        public RScript(string strInput)
+        public RScript(string script)
         {
-            List<RToken> tokens = new RTokenList(strInput).Tokens;
+            List<RToken> tokens = new RTokenList(script).Tokens;
             foreach (RToken token in tokens)
             {
                 var statement = new RStatement(token);
@@ -68,8 +68,8 @@ namespace RInsightF461
 
                 uint key = (uint)entry.Key;
                 RStatement rStatement = (RStatement)entry.Value;
-                if (key != rStatement.StartPos 
-                    || rStatement.StartPos != EndPosPrev 
+                if (key != rStatement.StartPos
+                    || rStatement.StartPos != EndPosPrev
                     || !rStatement.AreScriptPositionsConsistent())
                 {
                     return false;
@@ -109,12 +109,12 @@ namespace RInsightF461
             if (!string.IsNullOrEmpty(parameterName))
             {
                 FunctionRemoveParamByName(statementNumber, functionName, parameterName);
-            }            
+            }
 
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.FunctionAddParam(
                     functionName, parameterName, parameterValue, parameterNumber, isQuoted);
-            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+            statements = AdjustStatementsStartPos(statements, statementNumber + 1, adjustment);
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -133,7 +133,7 @@ namespace RInsightF461
         {
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.FunctionRemoveParamByName(functionName, parameterName);
-            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+            statements = AdjustStatementsStartPos(statements, statementNumber + 1, adjustment);
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -161,7 +161,7 @@ namespace RInsightF461
             RStatement statementToUpdate = statements[(int)statementNumber] as RStatement;
             int adjustment = statementToUpdate.FunctionUpdateParamValue(
                     functionName, parameterNumber, parameterValue, isQuoted, occurence);
-            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+            statements = AdjustStatementsStartPos(statements, statementNumber + 1, adjustment);
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -226,7 +226,7 @@ namespace RInsightF461
             int adjustment = statementToUpdate.OperatorAddParam(operatorName,
                                                                 parameterNumber,
                                                                 parameterScript);
-            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+            statements = AdjustStatementsStartPos(statements, statementNumber + 1, adjustment);
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -255,7 +255,7 @@ namespace RInsightF461
                                                                    parameterNumber,
                                                                    parameterValue,
                                                                    isQuoted);
-            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+            statements = AdjustStatementsStartPos(statements, statementNumber + 1, adjustment);
         }
 
         /// ----------------------------------------------------------------------------------------
@@ -282,39 +282,95 @@ namespace RInsightF461
             int adjustment = statementToUpdate.OperatorUpdateParamPresentation(operatorName,
                                                                                parameterNumber,
                                                                                presentation);
-            AdjustStatementsStartPos(statementNumber + 1, adjustment);
+            statements = AdjustStatementsStartPos(statements, statementNumber + 1, adjustment);
         }
 
         /// ----------------------------------------------------------------------------------------
         /// <summary>
-        /// For each statement in the script, after and including <paramref name="startStatement"/>, 
-        /// adjusts the statement's start position by <paramref name="adjustment"/>. This function 
-        /// is used to update the start positions of statements after an earlier statement has been 
-        /// updated.
+        /// Inserts <paramref name="scriptToInsert"/> into the current script just before statement 
+        /// <paramref name="statementNumberToInsertBefore"/>.
         /// </summary>
-        /// <param name="startStatement"> The number of the statement in the script to start 
-        /// adjusting the start positions. This is typically the statement immediately following 
-        /// the updated statement</param>
-        /// <param name="adjustment">     The amount to adjust the statements' start positions by</param>
+        /// <param name="statementNumberToInsertBefore"> Where to insert the new script.</param>
+        /// <param name="scriptToInsert"> The new script to insert</param>
         /// ----------------------------------------------------------------------------------------
-        private void AdjustStatementsStartPos(uint startStatement, int adjustment)
+        public void ScriptInsert(uint statementNumberToInsertBefore,
+                                 string scriptToInsert)
+        {
+            // if current script is empty
+            if (statements.Count == 0)
+            {
+                statements = new RScript(scriptToInsert).statements;
+                return;
+            }
+
+            // if we need to append the new script to the end of the current script
+            if (statementNumberToInsertBefore >= statements.Count)
+            {
+                // construct the new script from the current script and the new script
+                string scriptAppended = GetAsExecutableScript() + scriptToInsert;
+                statements = new RScript(scriptAppended).statements;
+                return;
+            }
+
+            // if above conditions not met, then we can assume that we need to insert the new
+            //   script somewhere after the first statement, and before the final statement
+
+            // construct the script up to the insert point
+            string scriptNew = string.Empty;
+            for (int i = 0; i < statementNumberToInsertBefore; i++)
+            {
+                RStatement statement = statements[i] as RStatement;
+                scriptNew += statement.Text;
+            }
+
+            // append the script from the new statements
+            scriptNew += scriptToInsert;
+
+            // append the script after the insert point
+            for (int i = (int)statementNumberToInsertBefore; i < statements.Count; i++)
+            {
+                RStatement statement = statements[i] as RStatement;
+                scriptNew += statement.Text;
+            }
+
+            // construct the new script statements from the combined scripts
+            statements = new RScript(scriptNew).statements;
+        }
+
+        /// ----------------------------------------------------------------------------------------
+        /// <summary>
+        /// For each statement in <paramref name="statementsToAdjust"/> after and including 
+        /// <paramref name="startStatement"/>, adjusts the statement's start position by 
+        /// <paramref name="adjustment"/>. This function is used to update the start positions of 
+        /// statements after an earlier statement has been inserted or updated.
+        /// </summary>
+        /// <param name="statementsToAdjust"> The dictionary of statements to adjust. The keys are 
+        /// the start positions of the statements. The values are the statements themselves.</param>
+        /// <param name="startStatement"> The number of the statement to start adjusting the start 
+        /// positions. This is typically the statement immediately following the updated statement.</param>
+        /// <param name="adjustment">     The amount to adjust the statements' start positions by</param>
+        /// <returns> A dictionary of statements with the adjusted start positions.</returns>
+        /// ----------------------------------------------------------------------------------------
+        private OrderedDictionary AdjustStatementsStartPos(OrderedDictionary statementsToAdjust,
+                                                           uint startStatement,
+                                                           int adjustment)
         {
             // update the the start positions of each statement that comes after the updated
             // statement
-            for (int i = (int)startStatement; i < statements.Count; i++)
+            for (int i = (int)startStatement; i < statementsToAdjust.Count; i++)
             {
-                RStatement statement = statements[i] as RStatement;
+                RStatement statement = statementsToAdjust[i] as RStatement;
                 statement.AdjustStartPos(adjustment);
             }
 
             // ensure that the dictionary keys are consistent with the new start positions
             OrderedDictionary statementsNew = new OrderedDictionary();
-            foreach (DictionaryEntry entry in statements)
+            foreach (DictionaryEntry entry in statementsToAdjust)
             {
                 RStatement statement = entry.Value as RStatement;
                 statementsNew.Add(statement.StartPos, statement);
             }
-            statements = statementsNew;
+            return statementsNew;
         }
     }
-}
+    }
