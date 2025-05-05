@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>$id$</id>
-    <version>0.0.11</version>
+    <version>0.0.12</version>
     <title>$title$</title>
     <authors>Stephen Lloyd</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -11,7 +11,7 @@
     <projectUrl>https://github.com/lloyddewit/RInsight/</projectUrl>
     <description>A .Net framemwork version of the RInsight NuGet package.</description>
     <readme>README.md</readme>
-    <releaseNotes>Added support for !!! operator.</releaseNotes>
+    <releaseNotes>Added support for inserting statements and enclosing operator parameters in quotes.</releaseNotes>
     <copyright>$copyright$</copyright>
     <tags>R Statistics Statistical</tags>
   </metadata>
